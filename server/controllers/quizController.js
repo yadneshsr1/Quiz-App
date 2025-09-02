@@ -117,7 +117,7 @@ exports.getQuizzes = function (req, res, next) {
 exports.getEligibleQuizzes = async function (req, res, next) {
   try {
     const now = new Date();
-    const userId = req.user.id;
+    const userId = req.user._id;
     
     // First, get all quizzes that match the basic criteria
     const query = {
@@ -173,29 +173,37 @@ exports.getEligibleQuizzes = async function (req, res, next) {
 
 exports.getCompletedQuizzes = async function (req, res, next) {
   try {
-    const userId = req.user.id;
+    const userId = req.user._id;
     
     // Get all quiz results for this student
     const results = await Result.find({ studentId: userId })
       .populate('quizId', 'title moduleCode startTime endTime duration')
       .sort({ submittedAt: -1 });
 
-    // Transform results to include quiz details
-    const completedQuizzes = results.map(result => ({
-      _id: result.quizId._id,
-      title: result.quizId.title,
-      moduleCode: result.quizId.moduleCode,
-      startTime: result.quizId.startTime,
-      endTime: result.quizId.endTime,
-      duration: result.quizId.duration,
-      score: result.score,
-      correctAnswers: result.correctAnswers,
-      totalQuestions: result.totalQuestions,
-      timeSpent: result.timeSpent,
-      submittedAt: result.submittedAt
-    }));
+    // Transform results to include quiz details, filtering out results with deleted quizzes
+    const completedQuizzes = results
+      .filter(result => {
+        if (!result.quizId) {
+          console.log(`⚠️  Skipping result ${result._id} - referenced quiz no longer exists`);
+          return false;
+        }
+        return true;
+      })
+      .map(result => ({
+        _id: result.quizId._id,
+        title: result.quizId.title,
+        moduleCode: result.quizId.moduleCode,
+        startTime: result.quizId.startTime,
+        endTime: result.quizId.endTime,
+        duration: result.quizId.duration,
+        score: result.score,
+        correctAnswers: result.correctAnswers,
+        totalQuestions: result.totalQuestions,
+        timeSpent: result.timeSpent,
+        submittedAt: result.submittedAt
+      }));
 
-    console.log(`Found ${completedQuizzes.length} completed quizzes for user ${userId}`);
+    console.log(`Found ${completedQuizzes.length} completed quizzes for user ${userId} (filtered out ${results.length - completedQuizzes.length} results with deleted quizzes)`);
     res.json(completedQuizzes);
   } catch (error) {
     console.error("Error fetching completed quizzes:", error);
@@ -220,6 +228,21 @@ exports.createQuiz = async function (req, res, next) {
       const saltRounds = 10;
       quizData.accessCodeHash = await bcrypt.hash(quizData.accessCode, saltRounds);
       delete quizData.accessCode; // Remove plaintext access code
+    }
+    
+    // Process assigned students: ensure they are valid ObjectIds
+    if (quizData.assignedStudentIds && Array.isArray(quizData.assignedStudentIds)) {
+      const mongoose = require("mongoose");
+      quizData.assignedStudentIds = quizData.assignedStudentIds
+        .filter(id => id && mongoose.Types.ObjectId.isValid(id))
+        .map(id => new mongoose.Types.ObjectId(id));
+      
+      // Log student assignment for debugging
+      if (quizData.assignedStudentIds.length > 0) {
+        console.log(`[QUIZ] Quiz "${quizData.title}" assigned to ${quizData.assignedStudentIds.length} students`);
+      }
+    } else {
+      quizData.assignedStudentIds = [];
     }
     
     // Process IP ranges: ensure they are stored as an array and validate each CIDR

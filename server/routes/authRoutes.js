@@ -124,4 +124,19 @@ if (SHOW_STUDENT_PHOTO) {
   });
 }
 
+// Get all students (academic role only)
+router.get("/students", auth, requireRole(["academic"]), async (req, res) => {
+  try {
+    const students = await User.find({ role: "student" })
+      .select("name email regNo course moduleCode photograph")
+      .sort({ name: 1 });
+    
+    console.log(`Fetched ${students.length} students for academic user`);
+    res.json(students);
+  } catch (error) {
+    console.error("Error fetching students:", error);
+    res.status(500).json({ error: "Failed to fetch students" });
+  }
+});
+
 module.exports = router;
