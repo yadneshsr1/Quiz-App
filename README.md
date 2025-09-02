@@ -59,7 +59,7 @@ quiz-app/
 
 1. **Clone the repository**
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/yadneshsr1/Quiz-App.git
    cd quiz-app
    ```
 
@@ -364,4 +364,4 @@ For support and questions:
 
 ---
 
-**Built with ❤️ for educational excellence** 
+**Built with ❤️ for educational excellence**
