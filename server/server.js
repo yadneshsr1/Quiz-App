@@ -103,7 +103,7 @@ const httpsServer = httpsOptions.key && httpsOptions.cert ?
   https.createServer(httpsOptions, app) : null;
 
 // Start servers
-httpServer.listen(PORT, () => {
+httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`Server running on port ${PORT}`);
   console.log("Server accessible at:");
   console.log(`  - Local: http://localhost:${PORT}`);

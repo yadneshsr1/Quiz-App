@@ -4,6 +4,19 @@ const Result = require("../models/Result");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { isIpAllowed, validateAndNormalizeCidr } = require("../utils/ipcheck");
+const os = require('os');
+
+function getLocalIPv4Address() {
+  const interfaces = os.networkInterfaces();
+  for (const name of Object.keys(interfaces)) {
+    for (const netIf of interfaces[name]) {
+      if (netIf.family === 'IPv4' && !netIf.internal) {
+        return netIf.address;
+      }
+    }
+  }
+  return '127.0.0.1';
+}
 const { logSecurityEvent } = require("../utils/securityLogger");
 const { log } = require("../utils/logger");
 
@@ -608,13 +621,25 @@ exports.launchQuiz = async function (req, res, next) {
 
     // Check IP filtering if configured
     if (quiz.allowedIpCidrs && quiz.allowedIpCidrs.length > 0) {
-      if (!isIpAllowed(userIp, quiz.allowedIpCidrs)) {
+      let allowed = isIpAllowed(userIp, quiz.allowedIpCidrs);
+
+      // Local development convenience: if the request looks like localhost
+      // but the machine's LAN IP is in the allowed list, treat as allowed.
+      if (!allowed && (userIp === '127.0.0.1' || userIp === '::1')) {
+        const serverLanIp = getLocalIPv4Address();
+        if (serverLanIp) {
+          allowed = isIpAllowed(serverLanIp, quiz.allowedIpCidrs);
+        }
+      }
+
+      if (!allowed) {
         logSecurityEvent("IP_BLOCKED", {
           userId,
           userIp,
           quizId,
           quizTitle: quiz.title,
           configuredCidrs: quiz.allowedIpCidrs,
+          serverLanIp: getLocalIPv4Address(),
           timestamp: new Date().toISOString()
         });
         return res.status(403).json({
@@ -713,13 +738,25 @@ exports.startQuiz = async function (req, res, next) {
 
     // Check IP filtering if configured (double-check for security)
     if (quiz.allowedIpCidrs && quiz.allowedIpCidrs.length > 0) {
-      if (!isIpAllowed(userIp, quiz.allowedIpCidrs)) {
+      let allowed = isIpAllowed(userIp, quiz.allowedIpCidrs);
+
+      // Local development convenience: if request IP looks like localhost,
+      // but the machine's LAN IP is allowed, treat as allowed.
+      if (!allowed && (userIp === '127.0.0.1' || userIp === '::1')) {
+        const serverLanIp = getLocalIPv4Address();
+        if (serverLanIp) {
+          allowed = isIpAllowed(serverLanIp, quiz.allowedIpCidrs);
+        }
+      }
+
+      if (!allowed) {
         logSecurityEvent("IP_BLOCKED_START", {
           userId,
           userIp,
           quizId,
           quizTitle: quiz.title,
           configuredCidrs: quiz.allowedIpCidrs,
+          serverLanIp: getLocalIPv4Address(),
           timestamp: new Date().toISOString()
         });
         return res.status(403).json({
