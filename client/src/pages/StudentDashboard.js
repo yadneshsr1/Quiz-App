@@ -1,13 +1,19 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useAvailableQuizzes } from "../hooks/useAvailableQuizzes";
 import "./StudentDashboard.css";
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const [availableQuizzes, setAvailableQuizzes] = useState([]);
-  const [completedQuizzes, setCompletedQuizzes] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
+  
+  // Use the new quiz management hook
+  const { 
+    availableQuizzes, 
+    isLoading, 
+    error: quizError, 
+    refetch: refetchQuizzes 
+  } = useAvailableQuizzes();
   const [accessCodeModal, setAccessCodeModal] = useState({ isOpen: false, quiz: null });
   const [accessCode, setAccessCode] = useState("");
   const [isLaunching, setIsLaunching] = useState(false);
@@ -31,9 +37,6 @@ const StudentDashboard = () => {
       setUser(userData);
     }
 
-    fetchQuizzes();
-    fetchCompletedQuizzes();
-
     // Check if mobile device
     const checkMobile = () => {
       const mobile = window.innerWidth <= 768;
@@ -49,161 +52,14 @@ const StudentDashboard = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, [navigate]);
 
-  // Add effect to refresh quiz data when component becomes visible
+  // Monitor accessCodeError changes (silent)
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        // Page became visible - refresh quiz data
-        console.log('Dashboard became visible - refreshing quiz data');
-        fetchQuizzes();
-        fetchCompletedQuizzes();
-      }
-    };
-
-    // Add event listener for page visibility changes
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
-    // Also refresh when window gains focus (user returns from another tab/window)
-    const handleFocus = () => {
-      console.log('Dashboard gained focus - refreshing quiz data');
-      fetchQuizzes();
-      fetchCompletedQuizzes();
-    };
-
-    window.addEventListener('focus', handleFocus);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('focus', handleFocus);
-    };
-  }, []);
-
-  // Refresh quiz data when user returns to dashboard (location change)
-  useEffect(() => {
-    // Only refresh if we're on the student dashboard path
-    if (location.pathname === '/student') {
-      console.log('User returned to dashboard - refreshing quiz data');
-      fetchQuizzes();
-      fetchCompletedQuizzes();
-    }
-  }, [location.pathname]);
-
-  // Debug effect to monitor accessCodeError changes
-  useEffect(() => {
-    console.log("accessCodeError state changed to:", accessCodeError);
+    // Silent monitoring - no console output
   }, [accessCodeError]);
 
-  const fetchQuizzes = async () => {
-    try {
-      console.log('🔄 fetchQuizzes: Starting API call...');
-      const token = localStorage.getItem("token");
-      const response = await fetch(`/api/quizzes/eligible`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
+  // Quiz fetching is now handled by the useAvailableQuizzes hook
 
-      console.log(`🔄 fetchQuizzes: API response status: ${response.status}`);
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch eligible quizzes: ${response.status}`);
-      }
-
-      const quizzes = await response.json();
-      console.log(`🔄 fetchQuizzes: Received ${quizzes.length} available quizzes`);
-      setAvailableQuizzes(quizzes);
-      setIsLoading(false);
-      console.log('🔄 fetchQuizzes: State updated successfully');
-    } catch (error) {
-      console.error("❌ Error fetching eligible quizzes:", error);
-      console.log("⚠️  Using fallback hardcoded data - this might be the issue!");
-      const hardcodedQuizzes = [
-        {
-          _id: 1,
-          title: "Introduction to Computer Science",
-          description: "Test your knowledge of basic computer science concepts including algorithms, data structures, and programming fundamentals.",
-          moduleCode: "CS101",
-          startTime: new Date().toISOString(),
-          duration: 60,
-          totalQuestions: 25
-        },
-        {
-          _id: 2,
-          title: "Web Development Fundamentals",
-          description: "Assess your understanding of HTML, CSS, and JavaScript basics for modern web development.",
-          moduleCode: "WD201",
-          startTime: new Date().toISOString(),
-          duration: 45,
-          totalQuestions: 20
-        },
-        {
-          _id: 3,
-          title: "Database Management Systems",
-          description: "Evaluate your knowledge of SQL, database design, and data management principles.",
-          moduleCode: "DB301",
-          startTime: new Date().toISOString(),
-          duration: 90,
-          totalQuestions: 30
-        },
-        {
-          _id: 4,
-          title: "Cybersecurity Essentials",
-          description: "Test your understanding of network security, cryptography, and cyber threat prevention.",
-          moduleCode: "CS401",
-          startTime: new Date().toISOString(),
-          duration: 75,
-          totalQuestions: 28
-        },
-        {
-          _id: 5,
-          title: "Software Engineering Principles",
-          description: "Assess your knowledge of software development methodologies, design patterns, and best practices.",
-          moduleCode: "SE501",
-          startTime: new Date().toISOString(),
-          duration: 120,
-          totalQuestions: 35
-        },
-        {
-          _id: 6,
-          title: "Artificial Intelligence Basics",
-          description: "Test your understanding of machine learning algorithms, neural networks, and AI fundamentals.",
-          moduleCode: "AI601",
-          startTime: new Date().toISOString(),
-          duration: 60,
-          totalQuestions: 22
-        }
-      ];
-      
-      setAvailableQuizzes(hardcodedQuizzes);
-      setIsLoading(false);
-    }
-  };
-
-  const fetchCompletedQuizzes = async () => {
-    try {
-      console.log('🔄 fetchCompletedQuizzes: Starting API call...');
-      const token = localStorage.getItem("token");
-      const response = await fetch(`/api/quizzes/completed`, {
-        headers: {
-          "Authorization": `Bearer ${token}`
-        }
-      });
-
-      console.log(`🔄 fetchCompletedQuizzes: API response status: ${response.status}`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch completed quizzes: ${response.status}`);
-      }
-
-      const quizzes = await response.json();
-      console.log(`🔄 fetchCompletedQuizzes: Received ${quizzes.length} completed quizzes`);
-      setCompletedQuizzes(quizzes);
-      console.log('🔄 fetchCompletedQuizzes: State updated successfully');
-    } catch (error) {
-      console.error("❌ Error fetching completed quizzes:", error);
-      console.log("⚠️  Completed quizzes fetch failed - this explains empty completed section!");
-    }
-  };
 
   const handleStartQuiz = async (quiz) => {
     // Check if quiz has an access code (we'll assume it does if we can't determine)
@@ -285,19 +141,7 @@ const StudentDashboard = () => {
     setAccessCodeError(""); // Clear any previous error messages
   };
 
-  const handleViewResults = (quiz) => {
-    // Navigate to results page with quiz data
-    navigate(`/quiz-results/${quiz._id}`, {
-      state: {
-        score: quiz.score,
-        totalQuestions: quiz.totalQuestions,
-        correctAnswers: quiz.correctAnswers,
-        timeSpent: quiz.timeSpent,
-        submittedAt: quiz.submittedAt,
-        completed: true
-      }
-    });
-  };
+
 
 
 
@@ -500,30 +344,9 @@ const StudentDashboard = () => {
             </h2>
             {/* Debug: Manual refresh button */}
             <button
-              onClick={async () => {
-                console.log('🔄 Manual refresh button clicked');
-                console.log('📊 Current state before refresh:', {
-                  available: availableQuizzes.length,
-                  completed: completedQuizzes.length
-                });
-                
-                try {
-                  await Promise.all([
-                    fetchQuizzes(),
-                    fetchCompletedQuizzes()
-                  ]);
-                  
-                  console.log('✅ Manual refresh completed');
-                  // Give React a moment to update state, then log new state
-                  setTimeout(() => {
-                    console.log('📊 Current state after refresh:', {
-                      available: availableQuizzes.length,
-                      completed: completedQuizzes.length
-                    });
-                  }, 100);
-                } catch (error) {
-                  console.error('❌ Manual refresh failed:', error);
-                }
+              onClick={() => {
+                console.log('🔄 Manual refresh triggered');
+                refetchQuizzes();
               }}
               style={{
                 padding: "6px 12px",
@@ -669,137 +492,7 @@ const StudentDashboard = () => {
                  </div>
        </div>
 
-       {/* Completed Quizzes Section */}
-       {completedQuizzes.length > 0 && (
-         <div style={{ marginTop: "40px" }}>
-           <h2 style={{
-             fontSize: "1.5rem",
-             fontWeight: "bold",
-             color: "#1f2937",
-             marginBottom: "20px"
-           }}>
-             Completed Quizzes
-           </h2>
-           
-           <div style={{
-             display: "grid",
-             gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
-             gap: "20px"
-           }}>
-             {completedQuizzes.map((quiz) => (
-               <div
-                 key={quiz._id}
-                 style={{
-                   backgroundColor: "white",
-                   borderRadius: "12px",
-                   padding: "24px",
-                   boxShadow: "0 4px 6px rgba(0,0,0,0.05)",
-                   border: "1px solid #f1f5f9",
-                   transition: "transform 0.2s, box-shadow 0.2s"
-                 }}
-                 onMouseEnter={(e) => {
-                   e.target.style.transform = "translateY(-2px)";
-                   e.target.style.boxShadow = "0 8px 25px rgba(0,0,0,0.1)";
-                 }}
-                 onMouseLeave={(e) => {
-                   e.target.style.transform = "translateY(0)";
-                   e.target.style.boxShadow = "0 4px 6px rgba(0,0,0,0.05)";
-                 }}
-               >
-                 <div style={{
-                   display: "flex",
-                   justifyContent: "space-between",
-                   alignItems: "flex-start",
-                   marginBottom: "16px"
-                 }}>
-                   <h3 style={{
-                     fontSize: "1.25rem",
-                     fontWeight: "bold",
-                     color: "#1f2937",
-                     margin: 0
-                   }}>
-                     {quiz.title}
-                   </h3>
-                   <div style={{
-                     padding: "4px 12px",
-                     backgroundColor: "#dbeafe",
-                     color: "#1e40af",
-                     borderRadius: "20px",
-                     fontSize: "0.75rem",
-                     fontWeight: "600"
-                   }}>
-                     {quiz.moduleCode}
-                   </div>
-                 </div>
-                 
-                 <div style={{
-                   display: "grid",
-                   gridTemplateColumns: "1fr 1fr",
-                   gap: "16px",
-                   marginBottom: "20px"
-                 }}>
-                   <div>
-                     <div style={{
-                       fontSize: "0.875rem",
-                       color: "#6b7280",
-                       marginBottom: "4px"
-                     }}>
-                       Score
-                     </div>
-                     <div style={{
-                       fontSize: "1.5rem",
-                       fontWeight: "bold",
-                       color: quiz.score >= 70 ? "#10b981" : quiz.score >= 50 ? "#f59e0b" : "#ef4444"
-                     }}>
-                       {quiz.score}%
-                     </div>
-                   </div>
-                   <div>
-                     <div style={{
-                       fontSize: "0.875rem",
-                       color: "#6b7280",
-                       marginBottom: "4px"
-                     }}>
-                       Completed
-                     </div>
-                     <div style={{
-                       fontSize: "1rem",
-                       fontWeight: "600",
-                       color: "#6b7280"
-                     }}>
-                       {new Date(quiz.submittedAt).toLocaleDateString()}
-                     </div>
-                   </div>
-                 </div>
-                 
-                 <button
-                   onClick={() => handleViewResults(quiz)}
-                   style={{
-                     width: "100%",
-                     padding: "12px",
-                     backgroundColor: "#10b981",
-                     color: "white",
-                     border: "none",
-                     borderRadius: "8px",
-                     fontSize: "0.875rem",
-                     fontWeight: "600",
-                     cursor: "pointer",
-                     transition: "background-color 0.2s"
-                   }}
-                   onMouseEnter={(e) => {
-                     e.target.style.backgroundColor = "#059669";
-                   }}
-                   onMouseLeave={(e) => {
-                     e.target.style.backgroundColor = "#10b981";
-                   }}
-                 >
-                   View Results
-                 </button>
-               </div>
-             ))}
-           </div>
-         </div>
-       )}
+
 
        {/* Right Sidebar Toggle Button */}
       <div
@@ -918,28 +611,6 @@ const StudentDashboard = () => {
             marginTop: "20px"
           }}>
             <div style={{
-              backgroundColor: "#fef3c7",
-              padding: "16px",
-              borderRadius: "8px",
-              textAlign: "center"
-            }}>
-              <div style={{
-                fontSize: "1.5rem",
-                fontWeight: "bold",
-                color: "#f59e0b",
-                marginBottom: "4px"
-              }}>
-                3
-              </div>
-              <div style={{
-                fontSize: "0.875rem",
-                color: "#92400e"
-              }}>
-                Quizzes Completed
-              </div>
-            </div>
-            
-            <div style={{
               backgroundColor: "#d1fae5",
               padding: "16px",
               borderRadius: "8px",
@@ -957,7 +628,7 @@ const StudentDashboard = () => {
                 fontSize: "0.875rem",
                 color: "#065f46"
               }}>
-                Averge Score
+                Average Score
               </div>
             </div>
           </div>

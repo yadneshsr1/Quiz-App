@@ -1,14 +1,24 @@
 const Result = require("../models/Result");
 const Quiz = require("../models/Quiz");
 const Question = require("../models/Question");
+const { log } = require("../utils/logger");
 
 // Submit quiz results
 exports.submitQuiz = async function (req, res, next) {
   try {
     const { quizId, answers, timeSpent } = req.body;
+    const studentId = req.user._id;
+
+    log('submit.in', { 
+      studentId: String(studentId), 
+      quizId: String(quizId), 
+      answersLen: answers ? Object.keys(answers).length : 0,
+      timeSpent: timeSpent || 0
+    });
 
     // Validate required fields
     if (!quizId || !answers) {
+      log('submit.validation_error', { quizId: !!quizId, answers: !!answers });
       return res.status(400).json({
         error: "Missing required fields",
         required: {
@@ -21,6 +31,7 @@ exports.submitQuiz = async function (req, res, next) {
     // Get quiz to check if it exists
     const quiz = await Quiz.findById(quizId);
     if (!quiz) {
+      log('submit.quiz_not_found', { quizId: String(quizId) });
       return res.status(404).json({ error: "Quiz not found" });
     }
 
@@ -30,71 +41,115 @@ exports.submitQuiz = async function (req, res, next) {
       deletedAt: null 
     }).sort({ createdAt: 1 });
 
-    if (questions.length === 0) {
-      return res.status(400).json({ error: "No questions found for this quiz" });
-    }
-
-    console.log(`Processing ${questions.length} questions for quiz ${quizId}`);
+    log('submit.questions', { count: questions.length });
 
     // Calculate score and correct answers
     let correctAnswers = 0;
     const totalQuestions = questions.length;
 
-    // Process each question
-    questions.forEach((question, index) => {
-      const userAnswer = answers[question._id];
-      if (userAnswer !== undefined && userAnswer === question.answerKey) {
-        correctAnswers++;
-      }
-    });
+    if (questions.length === 0) {
+      log('submit.no_questions', { quizId: String(quizId) });
+    } else {
+      // Process each question
+      questions.forEach((question, index) => {
+        const userAnswer = answers[question._id];
+        if (userAnswer !== undefined && userAnswer === question.answerKey) {
+          correctAnswers++;
+        }
+      });
+    }
 
     // Calculate percentage score
     const score = totalQuestions > 0 ? Math.round((correctAnswers / totalQuestions) * 100) : 0;
 
-    console.log(`Quiz submission: ${correctAnswers}/${totalQuestions} correct (${score}%)`);
+    log('submit.scoring', { correctAnswers, totalQuestions, score });
 
-    // Check if student has already submitted this quiz
-    const existingResult = await Result.findOne({ 
-      quizId: quizId, 
-      studentId: req.user._id 
-    });
-
-    if (existingResult) {
-      return res.status(409).json({ 
-        error: "Quiz already submitted",
-        resultId: existingResult._id
-      });
-    }
-
-    // Create the result
-    const result = new Result({
+    // ATOMIC UPSERT: Use findOneAndUpdate with upsert to prevent race conditions
+    const resultData = {
       quizId,
-      studentId: req.user._id, // Use studentId instead of userId
+      studentId,
       answers,
       score,
-      correctAnswers, // Add the missing field
+      correctAnswers,
       totalQuestions,
-      timeSpent: timeSpent || 0, // Ensure timeSpent is not null
-    });
-
-    await result.save();
-    
-    console.log(`Result saved successfully: ${result._id}`);
-
-    // Return the result with additional info for the client
-    const resultResponse = {
-      _id: result._id,
-      quizId: result.quizId,
-      score: result.score,
-      correctAnswers: result.correctAnswers,
-      totalQuestions: result.totalQuestions,
-      timeSpent: result.timeSpent,
-      submittedAt: result.submittedAt,
-      answers: result.answers
+      timeSpent: timeSpent || 0,
+      submittedAt: new Date()
     };
 
-    res.status(201).json({ result: resultResponse });
+    try {
+      const result = await Result.findOneAndUpdate(
+        { quizId, studentId }, // filter
+        { $setOnInsert: resultData }, // only set if inserting (not updating)
+        { 
+          upsert: true, 
+          new: true, 
+          runValidators: true,
+          setDefaultsOnInsert: true
+        }
+      );
+
+      // Check if this was an insert (new submission) or existing document
+      const isNewSubmission = result.submittedAt.getTime() === resultData.submittedAt.getTime();
+      
+      if (!isNewSubmission) {
+        log('submit.duplicate', { 
+          studentId: String(studentId), 
+          quizId: String(quizId),
+          existingSubmissionDate: result.submittedAt.toISOString()
+        });
+        return res.status(409).json({ 
+          error: "Quiz already submitted",
+          resultId: result._id,
+          submittedAt: result.submittedAt
+        });
+      }
+
+      log('submit.out', { 
+        attemptId: String(result._id), 
+        score: result.score, 
+        submittedAt: result.submittedAt.toISOString()
+      });
+
+      // Return the result with additional info for the client
+      const resultResponse = {
+        _id: result._id,
+        quizId: result.quizId,
+        score: result.score,
+        correctAnswers: result.correctAnswers,
+        totalQuestions: result.totalQuestions,
+        timeSpent: result.timeSpent,
+        submittedAt: result.submittedAt,
+        answers: result.answers
+      };
+
+      res.status(201).json({ result: resultResponse });
+      
+    } catch (duplicateError) {
+      // Handle unique constraint violation
+      if (duplicateError.code === 11000) {
+        log('submit.duplicate', { 
+          studentId: String(studentId), 
+          quizId: String(quizId),
+          error: 'unique_constraint_violation'
+        });
+        
+        // Fetch the existing result to return consistent response
+        const existingResult = await Result.findOne({ quizId, studentId });
+        return res.status(409).json({ 
+          error: "Quiz already submitted",
+          resultId: existingResult._id,
+          submittedAt: existingResult.submittedAt
+        });
+      }
+      throw duplicateError; // Re-throw if it's not a duplicate key error
+    }
+
   } catch (error) {
+    log('submit.error', { 
+      error: error.message, 
+      studentId: String(req.user._id), 
+      quizId: String(req.body.quizId)
+    });
     console.error("Error submitting quiz:", error);
     res.status(500).json({ error: "Failed to submit quiz" });
   }

@@ -22,7 +22,7 @@ router.get("/me", auth, async (req, res) => {
     if (!req.user) {
       return res.status(401).json({ error: "User not authenticated" });
     }
-    res.json(req.user);
+    res.json(req.user );
   } catch (error) {
     console.error("Auth /me error:", error);
     res.status(500).json({ error: "Failed to fetch current user" });

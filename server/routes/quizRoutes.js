@@ -16,14 +16,16 @@ router.get("/eligible", auth, quizController.getEligibleQuizzes);
 // Get completed quizzes (for students)
 router.get("/completed", auth, quizController.getCompletedQuizzes);
 
+
+
 // Launch quiz with access code (for students)
 router.post("/:quizId/launch", auth, quizController.launchQuiz);
 
 // Start quiz with launch ticket (for students)
 router.get("/:quizId/start", auth, requireLaunchTicket, quizController.startQuiz);
 
-// Get specific quiz by ID
-router.get("/:id", quizController.getQuiz);
+// Get specific quiz by ID (with authentication for access control)
+router.get("/:id", auth, quizController.getQuiz);
 
 // Get questions for a specific quiz
 router.get("/:id/questions", auth, quizController.getQuizQuestions);

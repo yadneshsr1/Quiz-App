@@ -81,8 +81,6 @@ const QuizResults = () => {
   };
 
   useEffect(() => {
-    console.log("QuizResults component mounted with quizId:", quizId);
-    console.log("Location state:", location.state);
     
     // Check authentication
     const userData = JSON.parse(localStorage.getItem("user"));
@@ -97,7 +95,6 @@ const QuizResults = () => {
       setResults(locationResults);
     } else {
       // If no results in location state, redirect back to student dashboard
-      console.log("No results in location state, redirecting to dashboard...");
       navigate("/student");
       return;
     }
@@ -106,10 +103,10 @@ const QuizResults = () => {
     const fetchQuiz = async () => {
       try {
         const token = localStorage.getItem("token");
-        console.log(`Fetching quiz for results: ${quizId}`);
+        // Fetching quiz data for results
         
-        // Temporarily hardcode the correct endpoint for testing
-      const response = await fetch(`/api/quizzes/${quizId}`, {
+        // Fetch quiz data for results page (with forResults=true to bypass submission check)
+      const response = await fetch(`/api/quizzes/${quizId}?forResults=true`, {
           headers: {
             "Authorization": `Bearer ${token}`
           }
@@ -124,13 +121,6 @@ const QuizResults = () => {
         }
 
         const quizData = await response.json();
-        console.log("Quiz data for results:", {
-          id: quizData._id,
-          title: quizData.title,
-          questionsCount: quizData.questions?.length || 0,
-          questions: quizData.questions
-        });
-        
         setQuiz(quizData);
         setIsLoading(false);
       } catch (error) {
@@ -342,21 +332,7 @@ const QuizResults = () => {
           flexDirection: "column",
           gap: "12px"
         }}>
-          <button
-            onClick={() => navigate("/student")}
-            style={{
-              padding: "12px",
-              backgroundColor: "#6366f1",
-              color: "white",
-              border: "none",
-              borderRadius: "8px",
-              fontSize: "0.875rem",
-              fontWeight: "600",
-              cursor: "pointer"
-            }}
-          >
-            Back to Dashboard
-          </button>
+
           
 
         </div>
@@ -544,6 +520,40 @@ const QuizResults = () => {
               </div>
             );
           })}
+        </div>
+        
+        {/* Back to Dashboard Button */}
+        <div style={{ 
+          marginTop: "40px", 
+          textAlign: "center",
+          paddingBottom: "40px"
+        }}>
+          <button
+            onClick={() => {
+              console.log('🏠 Back to Dashboard clicked - dispatching cache invalidation...');
+              window.dispatchEvent(new Event('quizCacheInvalidate'));
+              navigate('/student');
+            }}
+            style={{
+              padding: "12px 24px",
+              backgroundColor: "#6366f1",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "1rem",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "background-color 0.2s"
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = "#4f46e5";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = "#6366f1";
+            }}
+          >
+            Back to Dashboard
+          </button>
         </div>
       </div>
     </div>

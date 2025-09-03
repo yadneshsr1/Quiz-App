@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { isIpAllowed, validateAndNormalizeCidr } = require("../utils/ipcheck");
 const { logSecurityEvent } = require("../utils/securityLogger");
+const { log } = require("../utils/logger");
 
 // Configuration constants
 const CLOCK_SKEW_TOLERANCE_MS = parseInt(process.env.CLOCK_SKEW_TOLERANCE_MS) || 60000; // 60 seconds default
@@ -119,6 +120,11 @@ exports.getEligibleQuizzes = async function (req, res, next) {
     const now = new Date();
     const userId = req.user._id;
     
+    log('avail.query.start', { 
+      studentId: String(userId), 
+      now: now.toISOString() 
+    });
+    
     // First, get all quizzes that match the basic criteria
     const query = {
       $and: [
@@ -144,10 +150,20 @@ exports.getEligibleQuizzes = async function (req, res, next) {
       .select('-accessCodeHash') // Exclude sensitive access code hash
       .sort({ startTime: -1 });
 
+    log('avail.time_window', { 
+      matchedQuizzes: quizzes.length,
+      quizIds: quizzes.map(q => String(q._id))
+    });
+
     // Get all quiz IDs that the student has already attempted
     const attemptedQuizIds = await Result.find({ studentId: userId })
       .select('quizId')
       .distinct('quizId');
+
+    log('avail.attempts', { 
+      count: attemptedQuizIds.length, 
+      attemptedIds: attemptedQuizIds.map(id => String(id))
+    });
 
     // Filter out quizzes that the student has already attempted
     const availableQuizzes = quizzes.filter(quiz => 
@@ -156,9 +172,28 @@ exports.getEligibleQuizzes = async function (req, res, next) {
       )
     );
 
-    console.log(`Found ${quizzes.length} total eligible quizzes for user ${userId}, ${availableQuizzes.length} available (not attempted)`);
-    res.json(availableQuizzes);
+    log('avail.result', { 
+      availableCount: availableQuizzes.length,
+      quizIds: availableQuizzes.map(q => String(q._id))
+    });
+    
+    // Clean the data to ensure it's JSON serializable
+    const cleanQuizzes = availableQuizzes.map(quiz => ({
+      _id: quiz._id,
+      title: quiz.title,
+      moduleCode: quiz.moduleCode,
+      startTime: quiz.startTime,
+      endTime: quiz.endTime,
+      duration: quiz.duration,
+      createdBy: quiz.createdBy,
+      assignedStudentIds: quiz.assignedStudentIds,
+      createdAt: quiz.createdAt,
+      updatedAt: quiz.updatedAt
+    }));
+    
+    res.json(cleanQuizzes);
   } catch (error) {
+    log('avail.error', { error: error.message });
     console.error("Error fetching eligible quizzes:", error);
     if (
       error.name === "MongoNetworkError" ||
@@ -171,16 +206,19 @@ exports.getEligibleQuizzes = async function (req, res, next) {
   }
 };
 
+// Get completed quizzes for a student
 exports.getCompletedQuizzes = async function (req, res, next) {
   try {
     const userId = req.user._id;
+    
+    // Fetch completed quizzes silently
     
     // Get all quiz results for this student
     const results = await Result.find({ studentId: userId })
       .populate('quizId', 'title moduleCode startTime endTime duration')
       .sort({ submittedAt: -1 });
-
-    // Transform results to include quiz details, filtering out results with deleted quizzes
+    
+    // Filter out results where quiz no longer exists (deleted quizzes)
     const completedQuizzes = results
       .filter(result => {
         if (!result.quizId) {
@@ -202,8 +240,8 @@ exports.getCompletedQuizzes = async function (req, res, next) {
         timeSpent: result.timeSpent,
         submittedAt: result.submittedAt
       }));
-
-    console.log(`Found ${completedQuizzes.length} completed quizzes for user ${userId} (filtered out ${results.length - completedQuizzes.length} results with deleted quizzes)`);
+    
+    // Return completed quizzes
     res.json(completedQuizzes);
   } catch (error) {
     console.error("Error fetching completed quizzes:", error);
@@ -292,6 +330,28 @@ exports.getQuiz = async function (req, res, next) {
   }
 
   try {
+    // Check if user is authenticated (for students taking quizzes)
+    if (req.user && req.user.role === 'student') {
+      // Allow access if this is for viewing results (has 'forResults' query parameter)
+      const isForResults = req.query.forResults === 'true';
+      
+      if (!isForResults) {
+        // Check if student has already submitted this quiz (only block if not for results)
+        const existingResult = await Result.findOne({ 
+          quizId: id, 
+          studentId: req.user._id 
+        });
+        
+        if (existingResult) {
+          return res.status(403).json({ 
+            error: "Quiz already submitted",
+            message: "You have already completed this quiz and cannot access it again.",
+            resultId: existingResult._id
+          });
+        }
+      }
+    }
+
     // First, get the quiz
     const quiz = await Quiz.findById(id);
     if (!quiz) {
@@ -303,8 +363,6 @@ exports.getQuiz = async function (req, res, next) {
       quizId: id, 
       deletedAt: null 
     }).sort({ createdAt: 1 });
-
-    console.log(`Found ${questions.length} questions for quiz ${id}`);
 
     // Transform questions to match the expected format
     const transformedQuestions = questions.map(q => ({
@@ -320,8 +378,6 @@ exports.getQuiz = async function (req, res, next) {
       ...quiz.toObject(),
       questions: transformedQuestions
     };
-
-    console.log(`Returning quiz with ${quizWithQuestions.questions.length} questions`);
     res.json(quizWithQuestions);
   } catch (error) {
     console.error("Error fetching quiz:", error);

@@ -11,6 +11,7 @@ const authRoutes = require("./routes/authRoutes");
 const quizRoutes = require("./routes/quizRoutes");
 const resultRoutes = require("./routes/resultRoutes");
 const questionRoutes = require("./routes/questionRoutes");
+const debugRoutes = require("./routes/debugRoutes");
 const securityHeaders = require("./middleware/securityHeaders");
 const { cacheMiddleware } = require("./middleware/cacheMiddleware");
 
@@ -63,6 +64,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/quizzes", quizRoutes);
 app.use("/api/results", resultRoutes);
 app.use("/api/questions", questionRoutes);
+app.use("/api/debug", debugRoutes);
 
 // Serve static files from React build
 app.use(express.static(path.join(__dirname, "../client/build")));
@@ -75,7 +77,18 @@ app.get("*", (req, res) => {
 // MongoDB connection
 mongoose
   .connect(process.env.MONGO_URI || "mongodb://127.0.0.1:27017/quiz-app")
-  .then(() => console.log("MongoDB connected to:", mongoose.connection.host))
+  .then(async () => {
+    console.log("MongoDB connected to:", mongoose.connection.host);
+    
+    // Ensure indexes are created
+    try {
+      const Result = require("./models/Result");
+      await Result.syncIndexes();
+      console.log("✅ Result model indexes synced");
+    } catch (indexError) {
+      console.error("⚠️  Index sync error:", indexError.message);
+    }
+  })
   .catch((err) => console.error("MongoDB connection error:", err));
 
 // HTTPS Configuration

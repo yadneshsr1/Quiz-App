@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import StudentHeader from "../components/StudentHeader";
+import { useQuizSubmission } from "../hooks/useQuizSubmission";
 import "./QuizTaking.css";
 
 const QuizTaking = () => {
@@ -13,123 +14,22 @@ const QuizTaking = () => {
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [userData, setUserData] = useState(null);
   const [timeSpent, setTimeSpent] = useState(0);
+  
+  // Use the new submission hook
+  const { submitQuiz, isSubmitting, submitError } = useQuizSubmission();
 
   const handleSubmit = useCallback(async () => {
-    if (isSubmitted) return;
+    if (isSubmitted || isSubmitting || !quiz) return;
 
     setIsSubmitted(true);
 
-    try {
-      const token = localStorage.getItem("token");
-      const response = await fetch(`/api/results/submit`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          quizId: quiz._id,
-          answers,
-          timeSpent: timeSpent,
-        }),
-      });
-      if (!response.ok) {
-        const errorData = await response.json();
-        if (response.status === 409) {
-          // Quiz already submitted - redirect to results
-          alert(
-            "You have already submitted this quiz. Redirecting to your results..."
-          );
-          
-          // Calculate score for already submitted quiz
-          let correctAnswers = 0;
-          let totalQuestions = quiz.questions.length;
-          
-          quiz.questions.forEach(question => {
-            const userAnswer = answers[question._id];
-            if (userAnswer !== undefined && userAnswer === question.correctAnswerIndex) {
-              correctAnswers++;
-            }
-          });
-          
-          const score = Math.round((correctAnswers / totalQuestions) * 100);
-          
-          navigate(`/quiz-results/${quiz._id}`, {
-            state: {
-              score: score,
-              totalQuestions: totalQuestions,
-              correctAnswers: correctAnswers,
-              timeSpent: timeSpent,
-              answers: answers,
-              alreadySubmitted: true
-            },
-          });
-          return;
-        }
-        throw new Error(errorData.error || "Failed to submit quiz");
-      }
-
-      const result = await response.json();
-
-      // Calculate score locally to ensure accuracy
-      let correctAnswers = 0;
-      let totalQuestions = quiz.questions.length;
-      
-      quiz.questions.forEach(question => {
-        const userAnswer = answers[question._id];
-        if (userAnswer !== undefined && userAnswer === question.correctAnswerIndex) {
-          correctAnswers++;
-        }
-      });
-      
-      const score = Math.round((correctAnswers / totalQuestions) * 100);
-
-      // Navigate to results page
-      navigate(`/quiz-results/${quiz._id}`, {
-        state: {
-          score: score,
-          totalQuestions: totalQuestions,
-          correctAnswers: correctAnswers,
-          timeSpent: timeSpent,
-          answers: answers,
-        },
-      });
-    } catch (error) {
-      console.error("Error submitting quiz:", error);
-      if (error.message === "Quiz already submitted") {
-        alert(
-          "You have already submitted this quiz. Redirecting to your results..."
-        );
-        
-        // Calculate score for already submitted quiz
-        let correctAnswers = 0;
-        let totalQuestions = quiz.questions.length;
-        
-        quiz.questions.forEach(question => {
-          const userAnswer = answers[question._id];
-          if (userAnswer !== undefined && userAnswer === question.correctAnswerIndex) {
-            correctAnswers++;
-          }
-        });
-        
-        const score = Math.round((correctAnswers / totalQuestions) * 100);
-        
-        navigate(`/quiz-results/${quiz._id}`, {
-          state: {
-            score: score,
-            totalQuestions: totalQuestions,
-            correctAnswers: correctAnswers,
-            timeSpent: timeSpent,
-            answers: answers,
-            alreadySubmitted: true
-          },
-        });
-      } else {
-        alert("Error submitting quiz: " + error.message);
-        setIsSubmitted(false);
-      }
-    }
-  }, [quiz, answers, timeLeft, navigate, timeSpent]);
+    // Use the new submission hook
+    await submitQuiz({
+      quiz,
+      answers,
+      timeSpent
+    });
+  }, [quiz, answers, timeSpent, isSubmitted, isSubmitting, submitQuiz]);
 
   useEffect(() => {
     // Check authentication
@@ -146,8 +46,6 @@ const QuizTaking = () => {
     const fetchQuiz = async () => {
       try {
         const token = localStorage.getItem("token");
-        console.log(`Fetching quiz with ID: ${quizId}`);
-
         const response = await fetch(
           `/api/quizzes/${quizId}`,
           {
@@ -157,13 +55,19 @@ const QuizTaking = () => {
           }
         );
 
-        console.log(`Quiz fetch response status: ${response.status}`);
-
         if (!response.ok) {
-          const errorText = await response.text();
-          console.error("Quiz fetch failed:", errorText);
+          const errorData = await response.json().catch(() => ({ error: "Unknown error" }));
+          console.error("Quiz fetch failed:", errorData);
+          
+          // Handle 403 Forbidden (quiz already submitted)
+          if (response.status === 403) {
+            alert("You have already completed this quiz and cannot access it again. Redirecting to dashboard...");
+            navigate("/student");
+            return;
+          }
+          
           throw new Error(
-            `Failed to fetch quiz: ${response.status} ${errorText}`
+            `Failed to fetch quiz: ${response.status} ${errorData.message || errorData.error}`
           );
         }
 
@@ -175,16 +79,7 @@ const QuizTaking = () => {
           throw new Error("Invalid quiz data: Quiz or questions are missing");
         }
 
-        // Log the received data
-        console.log("Quiz data received:", {
-          id: quizData._id,
-          title: quizData.title,
-          questionsCount: quizData.questions?.length || 0,
-          questions: quizData.questions?.map((q) => ({
-            id: q._id,
-            text: q.questionText,
-          })),
-        });
+        // Quiz data received successfully
 
         if (quizData.questions.length === 0) {
           console.warn("Quiz has no questions");
@@ -435,20 +330,21 @@ const QuizTaking = () => {
         </div>
 
         <button
-          onClick={() => setIsSubmitted(true)}
+          onClick={handleSubmit}
+          disabled={isSubmitting}
           style={{
             width: "100%",
             padding: "12px",
-            backgroundColor: "#ef4444",
+            backgroundColor: isSubmitting ? "#9ca3af" : "#ef4444",
             color: "white",
             border: "none",
             borderRadius: "8px",
             fontSize: "0.875rem",
             fontWeight: "600",
-            cursor: "pointer",
+            cursor: isSubmitting ? "not-allowed" : "pointer",
           }}
         >
-          Submit Quiz
+          {isSubmitting ? "Submitting..." : "Submit Quiz"}
         </button>
       </div>
 
@@ -655,100 +551,7 @@ const QuizTaking = () => {
       </div>
       </div>
 
-      {/* Confirmation Modal */}
-      {isSubmitted && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: "rgba(0,0,0,0.5)",
-            display: "flex",
-            justifyContent: "center",
-            alignItems: "center",
-            zIndex: 1000,
-          }}
-        >
-          <div
-            style={{
-              backgroundColor: "white",
-              borderRadius: "12px",
-              padding: "30px",
-              maxWidth: "400px",
-              width: "90%",
-            }}
-          >
-            <h3
-              style={{
-                fontSize: "1.25rem",
-                fontWeight: "bold",
-                color: "#1f2937",
-                marginBottom: "16px",
-              }}
-            >
-              Quiz Submitted!
-            </h3>
-            <p
-              style={{
-                color: "#6b7280",
-                marginBottom: "24px",
-                lineHeight: "1.5",
-              }}
-            >
-              Your quiz has been submitted. You can view your results on the
-              results page.
-            </p>
-            <div
-              style={{
-                display: "flex",
-                gap: "12px",
-                justifyContent: "flex-end",
-              }}
-            >
-                             <button
-                 onClick={() => {
-                   // Calculate score for the modal navigation
-                   let correctAnswers = 0;
-                   let totalQuestions = quiz.questions.length;
-                   
-                   quiz.questions.forEach(question => {
-                     const userAnswer = answers[question._id];
-                     if (userAnswer !== undefined && userAnswer === question.correctAnswerIndex) {
-                       correctAnswers++;
-                     }
-                   });
-                   
-                   const score = Math.round((correctAnswers / totalQuestions) * 100);
-                   
-                   navigate(`/quiz-results/${quiz._id}`, {
-                     state: {
-                       score: score,
-                       totalQuestions: totalQuestions,
-                       correctAnswers: correctAnswers,
-                       timeSpent: timeSpent,
-                       answers: answers,
-                     },
-                   });
-                 }}
-                 style={{
-                   padding: "10px 20px",
-                   backgroundColor: "#f3f4f6",
-                   color: "#6b7280",
-                   border: "none",
-                   borderRadius: "6px",
-                   fontSize: "0.875rem",
-                   fontWeight: "600",
-                   cursor: "pointer",
-                 }}
-               >
-                 View Results
-               </button>
-            </div>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 };

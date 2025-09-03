@@ -65,20 +65,8 @@ exports.login = async function (req, res, next) {
   try {
     const { username, password } = req.body;
 
-    console.log("Login attempt:", { username, password });
-
     // Find user
     const user = await User.findOne({ username });
-    console.log(
-      "Found user:",
-      user
-        ? {
-            id: user._id,
-            username: user.username,
-            password: user.password,
-          }
-        : null
-    );
 
     if (!user) {
       return res.status(401).json({ error: "Invalid credentials" });
@@ -86,12 +74,6 @@ exports.login = async function (req, res, next) {
 
     // Simple password check
     if (password !== user.password) {
-      console.log(
-        "Password mismatch. Expected:",
-        user.password,
-        "Got:",
-        password
-      );
       return res.status(401).json({ error: "Invalid credentials" });
     }
 
