@@ -155,6 +155,91 @@ const QuizResults = () => {
     return "Need more practice!";
   };
 
+  const handleDownloadResults = () => {
+    try {
+      if (!results || !quiz) {
+        alert("Results not available to export");
+        return;
+      }
+
+      const user = JSON.parse(localStorage.getItem("user")) || {};
+
+      // Metadata rows
+      const metadata = [
+        [`Quiz Title: ${quiz.title || 'N/A'}`],
+        [`Module Code: ${quiz.moduleCode || 'N/A'}`],
+        [`Student: ${user.name || 'Student'}`],
+        [`Score: ${results.score}%`],
+        [`Correct: ${results.correctAnswers}/${results.totalQuestions}`],
+        [`Time Spent: ${formatTime(results.timeSpent || 0)}`],
+        [`Exported At: ${new Date().toLocaleString()}`],
+        [''],
+      ];
+
+      // Header for breakdown
+      const headers = [
+        "Question #",
+        "Question",
+        "Your Answer",
+        "Correct Answer",
+        "Result"
+      ];
+
+      // Build rows from questions
+      const rows = quiz.questions.map((q, idx) => {
+        const userAnswerIndex = results.answers ? results.answers[q._id] : undefined;
+        const correctIndex = q.correctAnswerIndex;
+        const yourAnswerText =
+          typeof userAnswerIndex === 'number' ? (q.options[userAnswerIndex] ?? '') : '';
+        const correctAnswerText = typeof correctIndex === 'number' ? (q.options[correctIndex] ?? '') : '';
+        const isCorrect = typeof userAnswerIndex === 'number' && userAnswerIndex === correctIndex;
+
+        return [
+          idx + 1,
+          q.questionText || '',
+          yourAnswerText,
+          correctAnswerText,
+          isCorrect ? 'Correct' : 'Incorrect'
+        ];
+      });
+
+      // CSV escape helper
+      const escapeField = (field) => {
+        const str = String(field ?? '');
+        if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+          return `"${str.replace(/"/g, '""')}"`;
+        }
+        return str;
+      };
+
+      const csvContent = [...metadata, headers, ...rows]
+        .map(row => row.map(escapeField).join(','))
+        .join('\n');
+
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        const safeTitle = (quiz.title || 'Quiz').replace(/[^a-z0-9]/gi, '_');
+        const safeName = (user.name || 'Student').replace(/[^a-z0-9]/gi, '_');
+        const date = new Date().toISOString().split('T')[0];
+        const filename = `${safeTitle}_${safeName}_Results_${date}.csv`;
+        link.setAttribute('href', url);
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        console.log(`⬇️ Student results exported: ${filename}`);
+      } else {
+        alert('Download not supported in this browser');
+      }
+    } catch (err) {
+      console.error('Error exporting student results:', err);
+      alert('Failed to download results. Please try again.');
+    }
+  };
+
   if (isLoading) {
     return (
       <div style={{
@@ -332,9 +417,28 @@ const QuizResults = () => {
           flexDirection: "column",
           gap: "12px"
         }}>
-
-          
-
+          <button
+            onClick={handleDownloadResults}
+            style={{
+              padding: "12px 16px",
+              backgroundColor: "#10b981",
+              color: "white",
+              border: "none",
+              borderRadius: "8px",
+              fontSize: "0.875rem",
+              fontWeight: "600",
+              cursor: "pointer",
+              transition: "background-color 0.2s"
+            }}
+            onMouseEnter={(e) => {
+              e.target.style.backgroundColor = "#059669";
+            }}
+            onMouseLeave={(e) => {
+              e.target.style.backgroundColor = "#10b981";
+            }}
+          >
+            ⬇️ Download Results (CSV)
+          </button>
         </div>
       </div>
 

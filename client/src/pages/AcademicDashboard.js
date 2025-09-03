@@ -11,6 +11,7 @@ Modal.setAppElement("#root");
 const AcademicDashboard = () => {
   const [user, setUser] = useState(null);
   const [quizzes, setQuizzes] = useState([]);
+  const [filteredQuizzes, setFilteredQuizzes] = useState([]);
   const [modalIsOpen, setModalIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [formData, setFormData] = useState({
@@ -69,6 +70,20 @@ const AcademicDashboard = () => {
     return () => window.removeEventListener('resize', checkMobile);
   }, [navigate]);
 
+  // Filter quizzes based on search term
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredQuizzes(quizzes);
+    } else {
+      const filtered = quizzes.filter(quiz => 
+        (quiz.title && quiz.title.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (quiz.moduleCode && quiz.moduleCode.toLowerCase().includes(searchTerm.toLowerCase())) ||
+        (quiz.description && quiz.description.toLowerCase().includes(searchTerm.toLowerCase()))
+      );
+      setFilteredQuizzes(filtered);
+    }
+  }, [searchTerm, quizzes]);
+
   const fetchQuizzes = async () => {
     try {
       const token = localStorage.getItem("token");
@@ -82,6 +97,7 @@ const AcademicDashboard = () => {
       if (response.ok) {
         const data = await response.json();
         setQuizzes(data);
+        setFilteredQuizzes(data);
       } else {
         throw new Error("Failed to fetch quizzes");
       }
@@ -115,6 +131,7 @@ const AcademicDashboard = () => {
         },
       ];
       setQuizzes(dummyQuizzes);
+      setFilteredQuizzes(dummyQuizzes);
     }
   };
 
@@ -205,7 +222,9 @@ const AcademicDashboard = () => {
       }
 
       const newQuiz = await response.json();
-      setQuizzes([newQuiz, ...quizzes]);
+      const updatedQuizzes = [newQuiz, ...quizzes];
+      setQuizzes(updatedQuizzes);
+      setFilteredQuizzes(updatedQuizzes);
       closeModal();
 
       // Reset form
@@ -316,7 +335,9 @@ const AcademicDashboard = () => {
       }
 
       // Remove the quiz from the local state
-      setQuizzes(quizzes.filter((quiz) => quiz._id !== quizToDelete._id));
+      const updatedQuizzes = quizzes.filter((quiz) => quiz._id !== quizToDelete._id);
+      setQuizzes(updatedQuizzes);
+      setFilteredQuizzes(updatedQuizzes);
       closeDeleteModal();
       
       // Show success message
@@ -512,14 +533,27 @@ const AcademicDashboard = () => {
             Your Quizzes
           </h2>
 
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
-              gap: "20px",
-            }}
-          >
-            {quizzes.map((quiz) => (
+          {filteredQuizzes.length === 0 ? (
+            <div style={{ 
+              textAlign: "center", 
+              padding: "50px 0", 
+              color: "#6b7280",
+              fontSize: "1.1rem"
+            }}>
+              {searchTerm.trim() ? 
+                `No quizzes found matching "${searchTerm}". Try adjusting your search terms.` : 
+                "No quizzes available yet. Create your first quiz to get started!"
+              }
+            </div>
+          ) : (
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))",
+                gap: "20px",
+              }}
+            >
+              {filteredQuizzes.map((quiz) => (
               <div
                 key={quiz._id}
                 style={{
@@ -544,7 +578,7 @@ const AcademicDashboard = () => {
                     display: "flex",
                     justifyContent: "space-between",
                     alignItems: "flex-start",
-                    marginBottom: "16px",
+                    marginBottom: "24px",
                   }}
                 >
                   <h3
@@ -568,56 +602,6 @@ const AcademicDashboard = () => {
                     }}
                   >
                     {quiz.moduleCode}
-                  </div>
-                </div>
-
-                <div
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "16px",
-                    marginBottom: "20px",
-                  }}
-                >
-                  <div>
-                    <div
-                      style={{
-                        fontSize: "0.875rem",
-                        color: "#6b7280",
-                        marginBottom: "4px",
-                      }}
-                    >
-                      Students Enrolled
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "1.125rem",
-                        fontWeight: "bold",
-                        color: "#1f2937",
-                      }}
-                    >
-                      {quiz.studentsEnrolled}
-                    </div>
-                  </div>
-                  <div>
-                    <div
-                      style={{
-                        fontSize: "0.875rem",
-                        color: "#6b7280",
-                        marginBottom: "4px",
-                      }}
-                    >
-                      Average Score
-                    </div>
-                    <div
-                      style={{
-                        fontSize: "1.125rem",
-                        fontWeight: "bold",
-                        color: "#10b981",
-                      }}
-                    >
-                      {quiz.avgScore}%
-                    </div>
                   </div>
                 </div>
 
@@ -658,20 +642,7 @@ const AcademicDashboard = () => {
                   >
                     View Analytics
                   </button>
-                  <button
-                    style={{
-                      padding: "8px 16px",
-                      backgroundColor: "#f3f4f6",
-                      color: "#374151",
-                      border: "none",
-                      borderRadius: "6px",
-                      fontSize: "0.875rem",
-                      fontWeight: "600",
-                      cursor: "pointer",
-                    }}
-                  >
-                    View Responses
-                  </button>
+
                   <button
                     onClick={() => openDeleteModal(quiz)}
                     style={{
@@ -697,7 +668,8 @@ const AcademicDashboard = () => {
                 </div>
               </div>
             ))}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 

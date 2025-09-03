@@ -3,42 +3,35 @@ const router = express.Router();
 const questionController = require("../controllers/questionController");
 const { auth } = require("../middleware/auth");
 
-// List questions with filters/search
-router.get("/quizzes/:quizId/questions", questionController.listQuestions);
+// Note: GET and POST for /quizzes/:quizId/questions are handled by quizRoutes.js
+// This avoids route conflicts and keeps quiz-related operations together
 
-// Create new question
+// Full update (accessed via /api/questions/:id)
+router.put("/:id", auth, questionController.updateQuestion);
+
+// Quick inline updates (accessed via /api/questions/:id/inline)
+router.patch("/:id/inline", auth, questionController.quickUpdate);
+
+// Soft delete (accessed via /api/questions/:id)
+router.delete("/:id", auth, questionController.softDelete);
+
+// Restore deleted question (accessed via /api/questions/:id/restore)
+router.post("/:id/restore", auth, questionController.restoreQuestion);
+
+// Get version history (accessed via /api/questions/:id/versions)
+router.get("/:id/versions", auth, questionController.getVersions);
+
+// Restore specific version (accessed via /api/questions/:id/versions/:versionId/restore)
 router.post(
-  "/quizzes/:quizId/questions",
-  auth,
-  questionController.createQuestion
-);
-
-// Full update (with version tracking)
-router.put("/questions/:id", auth, questionController.updateQuestion);
-
-// Quick inline updates
-router.patch("/questions/:id/inline", auth, questionController.quickUpdate);
-
-// Soft delete
-router.delete("/questions/:id", auth, questionController.softDelete);
-
-// Restore deleted question
-router.post("/questions/:id/restore", auth, questionController.restoreQuestion);
-
-// Get version history
-router.get("/questions/:id/versions", auth, questionController.getVersions);
-
-// Restore specific version
-router.post(
-  "/questions/:id/versions/:versionId/restore",
+  "/:id/versions/:versionId/restore",
   auth,
   questionController.restoreVersion
 );
 
-// List trash
+// List trash (accessed via /api/questions/trash/:quizId)
 router.get("/trash/:quizId", auth, questionController.listTrash);
 
-// Hard delete (purges)
-router.delete("/questions/:id/purge", auth, questionController.hardDelete);
+// Hard delete (accessed via /api/questions/:id/purge)
+router.delete("/:id/purge", auth, questionController.hardDelete);
 
 module.exports = router;

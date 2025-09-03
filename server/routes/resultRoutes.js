@@ -160,7 +160,7 @@ router.get(
 
         return {
           questionId: question._id,
-          questionText: question.title || question.stem,
+          questionText: question.title,
           options: question.options,
           correctAnswerIndex: question.answerKey,
           correctCount,

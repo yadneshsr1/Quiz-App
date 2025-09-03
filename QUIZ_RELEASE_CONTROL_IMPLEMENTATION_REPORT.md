@@ -316,7 +316,7 @@ curl -X POST http://localhost:5000/api/quizzes/<quizId>/launch \
        totalQuestions: questions.length,
        questions: questions.map(q => ({
          _id: q._id,
-         questionText: q.title || q.stem,
+         questionText: q.title,
          options: q.options,
          // Don't include correctAnswerIndex or feedback for security
        }))

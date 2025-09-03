@@ -367,7 +367,7 @@ exports.getQuiz = async function (req, res, next) {
     // Transform questions to match the expected format
     const transformedQuestions = questions.map(q => ({
       _id: q._id,
-      questionText: q.title || q.stem, // Use title or stem as questionText
+      questionText: q.title, // Use title as questionText
       options: q.options,
       correctAnswerIndex: q.answerKey,
       feedback: q.feedback
@@ -391,6 +391,7 @@ exports.getQuiz = async function (req, res, next) {
 // Get questions for a specific quiz
 exports.getQuizQuestions = async function (req, res, next) {
   const { id } = req.params;
+  const { search, sort = "-createdAt" } = req.query;
 
   if (!id) {
     return res.status(400).json({ error: "Quiz ID is required" });
@@ -403,28 +404,38 @@ exports.getQuizQuestions = async function (req, res, next) {
       return res.status(404).json({ error: "Quiz not found" });
     }
 
-    // Get all questions for this quiz from the separate Question model
-    const questions = await Question.find({ 
-      quizId: id, 
-      deletedAt: null 
-    }).sort({ createdAt: 1 });
+    // Build dynamic query with filters
+    const query = {
+      quizId: id,
+      deletedAt: null
+    };
 
-    console.log(`Found ${questions.length} questions for quiz ${id}`);
+    // Add search filter
+    if (search) {
+      query.$text = { $search: search };
+    }
+
+
+
+    // Get questions with dynamic filtering
+    const questions = await Question.find(query)
+      .sort(sort)
+      .select("-__v");
+
+    console.log(`Found ${questions.length} questions for quiz ${id} with filters:`, { search });
 
     // Transform questions to match the expected format
     const transformedQuestions = questions.map(q => ({
       _id: q._id,
-      title: q.title || q.stem, // Use title or stem
-      stem: q.stem || q.title, // Use stem or title
+      title: q.title, // Use title
       options: q.options,
       answerKey: q.answerKey,
       correctAnswerIndex: q.answerKey,
       feedback: q.feedback,
-      tags: q.tags || [],
-      status: q.status || 'active'
+      points: q.points || 1
     }));
 
-    console.log(`Returning ${transformedQuestions.length} questions for quiz ${id}`);
+    console.log(`Returning ${transformedQuestions.length} filtered questions for quiz ${id}`);
     res.json(transformedQuestions);
   } catch (error) {
     console.error("Error fetching quiz questions:", error);
@@ -464,7 +475,7 @@ exports.deleteQuiz = function (req, res, next) {
 exports.addQuestion = async function (req, res, next) {
   const quizId = req.params.id;
   // Accept both payload shapes from client components
-  const incomingQuestionText = req.body.questionText || req.body.title || req.body.stem;
+  const incomingQuestionText = req.body.questionText || req.body.title;
   const incomingOptions = req.body.options;
   const incomingAnswerIndex =
     req.body.correctAnswerIndex !== undefined ? req.body.correctAnswerIndex : req.body.answerKey;
@@ -493,12 +504,10 @@ exports.addQuestion = async function (req, res, next) {
     const newQuestion = new Question({
       quizId: quizId,
       title: incomingQuestionText,
-      stem: incomingQuestionText,
       options: incomingOptions,
       answerKey: incomingAnswerIndex,
       points: 1,
       feedback: incomingFeedback || "",
-      status: "published",
     });
 
     const savedQuestion = await newQuestion.save();
@@ -513,7 +522,7 @@ exports.addQuestion = async function (req, res, next) {
     // Return the saved question in the expected format for the quiz-taking UI
     const questionResponse = {
       _id: savedQuestion._id,
-      questionText: savedQuestion.title || savedQuestion.stem,
+      questionText: savedQuestion.title,
       options: savedQuestion.options,
       correctAnswerIndex: savedQuestion.answerKey,
       feedback: savedQuestion.feedback,
@@ -737,7 +746,7 @@ exports.startQuiz = async function (req, res, next) {
       totalQuestions: questions.length,
       questions: questions.map(q => ({
         _id: q._id,
-        questionText: q.title || q.stem,
+        questionText: q.title,
         options: q.options,
         // Don't include correctAnswerIndex or feedback for security
       })),

@@ -10,25 +10,21 @@ import {
   Paper,
   IconButton,
   TextField,
-  Chip,
   Tooltip,
   TablePagination,
   Box,
   Toolbar,
   Typography,
   Button,
-  Menu,
-  MenuItem,
 } from "@mui/material";
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
-  FilterList as FilterIcon,
   Search as SearchIcon,
 } from "@mui/icons-material";
 import { useQuery, useMutation, useQueryClient } from "react-query";
 
-const fetchQuestions = async ({ quizId, search, tags, status }) => {
+const fetchQuestions = async ({ quizId, search }) => {
   try {
     if (!quizId) {
       throw new Error("Quiz ID is required");
@@ -39,8 +35,6 @@ const fetchQuestions = async ({ quizId, search, tags, status }) => {
     // Build query parameters
     const params = new URLSearchParams();
     if (search) params.append("search", search);
-    if (tags && tags.length > 0) params.append("tags", tags.join(","));
-    if (status) params.append("status", status);
 
     // Temporarily hardcode the correct endpoint for testing
     const response = await fetch(
@@ -64,7 +58,7 @@ const fetchQuestions = async ({ quizId, search, tags, status }) => {
     return questions.map((q, index) => ({
       ...q,
       id: q._id || index,
-      title: q.title || q.stem, // Use title or stem for display
+      title: q.title, // Use title for display
     }));
   } catch (error) {
     console.error("Error fetching questions:", error);
@@ -76,10 +70,6 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState("");
-  const [filterAnchorEl, setFilterAnchorEl] = useState(null);
-  const [selectedTags, setSelectedTags] = useState([]);
-  const [selectedStatus, setSelectedStatus] = useState("");
-
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation(
@@ -117,13 +107,11 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
     isLoading,
     error,
   } = useQuery(
-    ["questions", quizId, search, selectedTags, selectedStatus, refreshTrigger],
+    ["questions", quizId, search, refreshTrigger],
     () =>
       fetchQuestions({
         quizId,
         search,
-        tags: selectedTags,
-        status: selectedStatus,
       }),
     {
       keepPreviousData: true,
@@ -165,19 +153,9 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
     setPage(0);
   };
 
-  const handleFilterClick = (event) => {
-    setFilterAnchorEl(event.currentTarget);
-  };
 
-  const handleFilterClose = () => {
-    setFilterAnchorEl(null);
-  };
 
-  const handleStatusFilter = (status) => {
-    setSelectedStatus(status);
-    handleFilterClose();
-    setPage(0);
-  };
+
 
   const handleDelete = async (questionId) => {
     try {
@@ -210,12 +188,9 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
             onClick={() =>
               onQuestionSelect({
                 title: "",
-                stem: "",
                 options: [""],
                 answerKey: 0,
                 feedback: "",
-                tags: [],
-                status: "draft",
                 points: 1,
               })
             }
@@ -236,36 +211,17 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
             sx={{ width: 300 }}
           />
         </Box>
-        <Tooltip title="Filter list">
-          <IconButton onClick={handleFilterClick}>
-            <FilterIcon />
-          </IconButton>
-        </Tooltip>
+
       </Toolbar>
 
-      <Menu
-        anchorEl={filterAnchorEl}
-        open={Boolean(filterAnchorEl)}
-        onClose={handleFilterClose}
-      >
-        <MenuItem onClick={() => handleStatusFilter("")}>All</MenuItem>
-        <MenuItem onClick={() => handleStatusFilter("draft")}>Draft</MenuItem>
-        <MenuItem onClick={() => handleStatusFilter("published")}>
-          Published
-        </MenuItem>
-        <MenuItem onClick={() => handleStatusFilter("archived")}>
-          Archived
-        </MenuItem>
-      </Menu>
+
 
       <TableContainer>
         <Table>
           <TableHead>
             <TableRow>
               <TableCell>Title</TableCell>
-              <TableCell>Status</TableCell>
               <TableCell>Points</TableCell>
-              <TableCell>Tags</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -275,32 +231,9 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
               .map((question) => (
                 <TableRow key={question.id || question._id}>
                   <TableCell>
-                    {question.title || question.stem}
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={question.status || "draft"}
-                      color={
-                        question.status === "published"
-                          ? "success"
-                          : question.status === "draft"
-                          ? "default"
-                          : "error"
-                      }
-                      size="small"
-                    />
+                    {question.title}
                   </TableCell>
                   <TableCell>{question.points || 1}</TableCell>
-                  <TableCell>
-                    {(question.tags || []).map((tag) => (
-                      <Chip
-                        key={tag}
-                        label={tag}
-                        size="small"
-                        sx={{ mr: 0.5 }}
-                      />
-                    ))}
-                  </TableCell>
                   <TableCell align="right">
                     <Tooltip title="Edit">
                       <IconButton

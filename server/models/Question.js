@@ -15,7 +15,7 @@ const questionSchema = new mongoose.Schema(
     },
     stem: {
       type: String,
-      required: true,
+      required: false,
     },
     options: [
       {
@@ -43,7 +43,7 @@ const questionSchema = new mongoose.Schema(
     status: {
       type: String,
       enum: ["draft", "published", "archived"],
-      default: "draft",
+      default: "published",
     },
     feedback: {
       type: String,
@@ -64,7 +64,7 @@ const questionSchema = new mongoose.Schema(
 questionSchema.index({ quizId: 1, deletedAt: 1 });
 
 // Add text index for search functionality
-questionSchema.index({ title: "text", stem: "text", tags: "text" });
+questionSchema.index({ title: "text" });
 
 const Question = mongoose.model("Question", questionSchema);
 

@@ -65,15 +65,12 @@ const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => 
   const [tab, setTab] = useState(0);
   const [formData, setFormData] = useState({
     title: "",
-    stem: "",
     options: [""],
     answerKey: 0,
     points: 1,
-    tags: [],
-    status: "draft",
     feedback: "",
   });
-  const [newTag, setNewTag] = useState("");
+
   const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
   const [selectedVersion, setSelectedVersion] = useState(null);
 
@@ -91,24 +88,18 @@ const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => 
     if (question) {
       setFormData({
         title: question.title || "",
-        stem: question.stem || "",
         options: question.options || [""],
         answerKey: question.answerKey || 0,
         points: question.points || 1,
-        tags: question.tags || [],
-        status: question.status || "draft",
         feedback: question.feedback || "",
       });
     } else {
       // Reset form for new question
       setFormData({
         title: "",
-        stem: "",
         options: [""],
         answerKey: 0,
         points: 1,
-        tags: [],
-        status: "draft",
         feedback: "",
       });
     }
@@ -226,22 +217,7 @@ const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => 
     }));
   };
 
-  const handleAddTag = () => {
-    if (newTag && !formData.tags.includes(newTag)) {
-      setFormData((prev) => ({
-        ...prev,
-        tags: [...prev.tags, newTag],
-      }));
-      setNewTag("");
-    }
-  };
 
-  const handleDeleteTag = (tagToDelete) => {
-    setFormData((prev) => ({
-      ...prev,
-      tags: prev.tags.filter((tag) => tag !== tagToDelete),
-    }));
-  };
 
   const handleRestoreVersion = async () => {
     if (selectedVersion) {
@@ -277,7 +253,6 @@ const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => 
         <Tab label="Content" />
         <Tab label="Answer & Scoring" />
         <Tab label="Feedback" />
-        <Tab label="Metadata" />
         {question?._id && <Tab label="History" />}
       </Tabs>
 
@@ -293,17 +268,7 @@ const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => 
                 setFormData((prev) => ({ ...prev, title: e.target.value }))
               }
             />
-            <TextField
-              label="Question Stem"
-              fullWidth
-              multiline
-              rows={4}
-              required
-              value={formData.stem}
-              onChange={(e) =>
-                setFormData((prev) => ({ ...prev, stem: e.target.value }))
-              }
-            />
+
             <Box>
               <Typography variant="subtitle1" gutterBottom>
                 Options
@@ -377,53 +342,8 @@ const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => 
           />
         </TabPanel>
 
-        <TabPanel value={tab} index={3}>
-          <Stack spacing={3}>
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
-              <Select
-                value={formData.status}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, status: e.target.value }))
-                }
-              >
-                <MenuItem value="draft">Draft</MenuItem>
-                <MenuItem value="published">Published</MenuItem>
-                <MenuItem value="archived">Archived</MenuItem>
-              </Select>
-            </FormControl>
-
-            <Box>
-              <Typography variant="subtitle1" gutterBottom>
-                Tags
-              </Typography>
-              <Box sx={{ mb: 2 }}>
-                {formData.tags.map((tag) => (
-                  <Chip
-                    key={tag}
-                    label={tag}
-                    onDelete={() => handleDeleteTag(tag)}
-                    sx={{ mr: 1, mb: 1 }}
-                  />
-                ))}
-              </Box>
-              <Box display="flex" gap={1}>
-                <TextField
-                  size="small"
-                  value={newTag}
-                  onChange={(e) => setNewTag(e.target.value)}
-                  placeholder="Add new tag"
-                />
-                <Button onClick={handleAddTag} startIcon={<AddIcon />}>
-                  Add
-                </Button>
-              </Box>
-            </Box>
-          </Stack>
-        </TabPanel>
-
         {question?._id && (
-          <TabPanel value={tab} index={4}>
+          <TabPanel value={tab} index={3}>
             <List>
               {versions.map((version) => (
                 <ListItem key={version._id}>

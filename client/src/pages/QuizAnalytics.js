@@ -81,6 +81,91 @@ const QuizAnalytics = () => {
     return new Date(dateString).toLocaleString();
   };
 
+  const handleExportResults = () => {
+    try {
+      if (!filteredResults || filteredResults.length === 0) {
+        alert("No results to export. Try adjusting your filters.");
+        return;
+      }
+
+      console.log('📊 Starting CSV export...');
+
+      // Add quiz metadata at the top
+      const metadata = [
+        [`Quiz Title: ${quiz?.title || 'N/A'}`],
+        [`Module Code: ${quiz?.moduleCode || 'N/A'}`],
+        [`Total Submissions: ${filteredResults.length}`],
+        [`Export Date: ${new Date().toLocaleString()}`],
+        [`Filter Applied: ${filterOption} ${searchTerm ? `| Search: "${searchTerm}"` : ''}`],
+        [''], // Empty row for separation
+      ];
+
+      // Define CSV headers
+      const headers = [
+        "Student Name",
+        "Registration Number", 
+        "Course",
+        "Score (%)",
+        "Correct Answers",
+        "Total Questions",
+        "Time Spent",
+        "Submitted At",
+        "Status"
+      ];
+
+      // Format the data for CSV - use filteredResults to respect current filters
+      const csvData = filteredResults.map(result => [
+        result.studentId.name || "N/A",
+        result.studentId.regNo || "N/A",
+        result.studentId.course || "N/A",
+        result.score || 0,
+        result.correctAnswers || 0,
+        result.totalQuestions || 0,
+        formatTime(result.timeSpent || 0),
+        formatDate(result.submittedAt),
+        result.status === "passed" ? "Passed" : "Failed"
+      ]);
+
+      // Combine metadata, headers and data
+      const csvContent = [...metadata, headers, ...csvData]
+        .map(row => row.map(field => {
+          // Escape fields that contain commas, quotes, or newlines
+          if (typeof field === 'string' && (field.includes(',') || field.includes('"') || field.includes('\n'))) {
+            return `"${field.replace(/"/g, '""')}"`;
+          }
+          return field;
+        }).join(','))
+        .join('\n');
+
+      // Create and download the file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const link = document.createElement('a');
+      
+      if (link.download !== undefined) {
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        // Create a safe filename
+        const safeTitle = (quiz?.title || 'Quiz').replace(/[^a-z0-9]/gi, '_');
+        const timestamp = new Date().toISOString().split('T')[0];
+        const filename = `${safeTitle}_Results_${timestamp}.csv`;
+        link.setAttribute('download', filename);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        console.log(`📊 Exported ${filteredResults.length} results to CSV`);
+        alert(`✅ Successfully exported ${filteredResults.length} student results to ${filename}`);
+      } else {
+        // Fallback for older browsers
+        alert('CSV export is not supported in this browser');
+      }
+    } catch (error) {
+      console.error('Error exporting results:', error);
+      alert('Failed to export results. Please try again.');
+    }
+  };
+
   const getScoreColor = (score) => {
     if (score >= 90) return "#10b981";
     if (score >= 80) return "#3b82f6";
@@ -408,7 +493,7 @@ const QuizAnalytics = () => {
             gap: "12px"
           }}>
             <button
-              onClick={() => {/* Export functionality */}}
+              onClick={handleExportResults}
               style={{
                 padding: "8px 16px",
                 backgroundColor: "#10b981",
@@ -417,10 +502,17 @@ const QuizAnalytics = () => {
                 borderRadius: "6px",
                 fontSize: "0.875rem",
                 fontWeight: "600",
-                cursor: "pointer"
+                cursor: "pointer",
+                transition: "background-color 0.2s"
+              }}
+              onMouseEnter={(e) => {
+                e.target.style.backgroundColor = "#059669";
+              }}
+              onMouseLeave={(e) => {
+                e.target.style.backgroundColor = "#10b981";
               }}
             >
-              Export Results
+              📊 Export Results
             </button>
           </div>
         </div>
