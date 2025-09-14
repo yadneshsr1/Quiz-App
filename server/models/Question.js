@@ -49,19 +49,14 @@ const questionSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    deletedAt: {
-      type: Date,
-      default: null,
-      index: true,
-    },
   },
   {
     timestamps: true,
   }
 );
 
-// Add compound index for quizId + deletedAt for efficient filtering
-questionSchema.index({ quizId: 1, deletedAt: 1 });
+// Add index for efficient quiz filtering
+questionSchema.index({ quizId: 1 });
 
 // Add text index for search functionality
 questionSchema.index({ title: "text" });

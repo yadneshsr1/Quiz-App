@@ -1,0 +1,3289 @@
+Designing UI Libraries with Functional
+Programming
+Omosefe Q. Osakue
+Supervisor: Gergely Buday
+
+A report submitted in fulfillment of the requirements
+for the degree of BSc in Computer Science with Year in Industry
+in the
+School of Computer Science
+
+May 21, 2025
+
+Declaration
+
+All sentences or passages quoted in this report from other people’s work have been specifically
+acknowledged by clear cross-referencing to author, work and page(s). Any illustrations that
+are not the work of the author of this report have been used with the explicit permission
+of the originator and are specifically acknowledged. I understand that failure to do this
+amounts to plagiarism and will be considered grounds for failure in this project and the
+degree examination as a whole.
+
+Name: Omosefe Q. Osakue
+Signature: Omosefe Osakue
+Date: May 21, 2025
+
+i
+
+Abstract
+
+Functional programming offers powerful paradigms for user interface development, particularly through abstractions such as behaviors and events that model time-varying and reactive
+values [Elliott and Hudak, 1997], yet its application in enterprise contexts remains underdeveloped compared to Object-oriented approaches [Deng, 2024].
+This research explores the development of a functional programming layer for UI design
+by extending the Giraffe library in Standard ML (SML), with specific application to the challenges of developing desktop applications for Enterprise Resource Planning (ERP) systems.
+Drawing inspiration from contemporary JavaScript UI frameworks such as React, Vue.js,
+and Angular, this dissertation introduces The ERP UI Library, a component library
+tailored for small-scale ERP applications that demonstrates how functional approaches such
+as immutability, pure functions, and strong static typing enhance UI development. The
+library specifically addresses persistent ERP system challenges related to UI maintainability,
+consistency, and developer productivity.
+The study employs a mixed-method research approach, combining theoretical analysis
+with practical implementation and comparative evaluation against established frameworks.
+This methodology demonstrates how functional programming can address key challenges in
+enterprise UI development, especially those related to state management, component composition, type safety, and interface consistency.
+This work serves as a case study for leveraging SML and Giraffe to build a structured
+and reliable user interface for enterprise software, bridging the gap between functional programming theory and practical application.
+
+ii
+
+Acknowledgments
+
+I would like to express my heartfelt gratitude to my supervisor, Gergely Buday, for his
+invaluable guidance, continuous support, and genuine interest in my project.
+His expertise, encouragement, and the many resources he provided were instrumental in
+shaping the development of this work and in shaping my skills as a software engineer.
+My appreciation also goes to James Mapp, my second marker, whose constructive feedback
+helped refine and improve my work.
+I am particularly grateful to my siblings, O.E.N.A and my friends, for their constant
+encouragement and unwavering support during this journey.
+I am deeply thankful to my parents for their endless love, and belief in me that carried
+me through every challenge. Your support has been my anchor throughout this journey.
+Above all, I thank God for granting me the strength, perseverance, and clarity to complete
+this project. Without His blessings, none of this would have been possible.
+
+iii
+
+Contents
+Glossary
+
+1
+
+1 Introduction
+1.1 Background: A Functional Approach to Enterprise UI Libraries . . . . . . . .
+1.2 Structure of the Dissertation . . . . . . . . . . . . . . . . . . . . . . . . . . .
+1.3 Relationship of this Project and my Degree Programme . . . . . . . . . . . .
+1.4 Aims and Objectives . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+3
+3
+5
+5
+6
+
+2 Literature Survey
+2.1 Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+2.2 Paradigms in User Interface Development . . . . . . . . . . . . . . . . . . . .
+2.2.1 The Imperative Approach . . . . . . . . . . . . . . . . . . . . . . . . .
+2.2.2 The Functional Approach . . . . . . . . . . . . . . . . . . . . . . . . .
+2.2.3 Relationship Between Paradigms . . . . . . . . . . . . . . . . . . . . .
+2.3 Enterprise Resource Planning (ERP) UI Challenges . . . . . . . . . . . . . . .
+2.4 Standard ML (SML) for UI Development . . . . . . . . . . . . . . . . . . . .
+2.4.1 Type System and Safety . . . . . . . . . . . . . . . . . . . . . . . . . .
+2.4.2 Module System . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+2.4.3 Controlled Imperative Features . . . . . . . . . . . . . . . . . . . . . .
+2.4.4 Historical Context for UI Development . . . . . . . . . . . . . . . . . .
+2.5 The Giraffe Library: Enabling GTK+ Development in SML . . . . . . . . . .
+2.5.1 Technical Architecture . . . . . . . . . . . . . . . . . . . . . . . . . . .
+2.5.2 Integration with SML . . . . . . . . . . . . . . . . . . . . . . . . . . .
+2.5.3 Practical Applications and Research . . . . . . . . . . . . . . . . . . .
+2.6 UI Design Principles and Consistency in Functional UIs . . . . . . . . . . . .
+2.6.1 The Fundamental Importance of UI Consistency . . . . . . . . . . . .
+2.6.2 Design Systems as Practical Consistency Frameworks . . . . . . . . .
+2.6.3 Functional Programming’s Contribution to Consistency . . . . . . . .
+2.7 Comparative Analysis of Mainstream UI Frameworks . . . . . . . . . . . . . .
+2.7.1 React: Component-Based UI Development . . . . . . . . . . . . . . .
+2.7.2 Vue.js: Progressive Framework with Reactive Data Binding . . . . . .
+2.7.3 Angular: Comprehensive Platform and Framework . . . . . . . . . . .
+
+8
+8
+8
+8
+9
+10
+10
+11
+11
+12
+12
+12
+12
+13
+13
+13
+14
+14
+15
+15
+16
+16
+17
+17
+
+iv
+
+CONTENTS
+
+v
+
+2.7.4 Contrasting with the SML/Giraffe Approach . . . . . . . . . . . . . .
+Conclusion . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+17
+18
+
+3 Requirements and analysis
+3.1 Requirements of the system . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+3.1.1 Mixed-Method Research Approach . . . . . . . . . . . . . . . . . . . .
+3.1.2 Requirements Gathering Methodology . . . . . . . . . . . . . . . . . .
+3.1.3 Functional Requirements . . . . . . . . . . . . . . . . . . . . . . . . .
+3.1.4 Non-Functional Requirements . . . . . . . . . . . . . . . . . . . . . . .
+3.2 Constraints and Limitations . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+3.3 Testing and Quality Assurance Strategy . . . . . . . . . . . . . . . . . . . . .
+3.4 Risk Analysis . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+3.5 Ethical, Professional and Legal Issues . . . . . . . . . . . . . . . . . . . . . .
+
+20
+21
+22
+22
+22
+26
+27
+27
+27
+28
+
+4 Design
+4.1 Introduction . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.2 Development Environment . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.2.1 Poly/ML . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.2.2 Visual Studio Code . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.2.3 Giraffe Library . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.2.4 GTK+ . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.2.5 Command Line Interface (CLI) . . . . . . . . . . . . . . . . . . . . . .
+4.2.6 Ubuntu Linux Operating System . . . . . . . . . . . . . . . . . . . . .
+4.2.7 Git . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.3 The ERP UI Library Structure . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.3.1 Component Hierarchy . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.3.2 User Flow . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.3.3 Addressing ERP-Specific Challenges . . . . . . . . . . . . . . . . . . .
+4.4 Wireframes . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.4.1 Base Page Wireframe . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.4.2 Login Page Wireframe . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.4.3 Dashboard Wireframe . . . . . . . . . . . . . . . . . . . . . . . . . . .
+4.4.4 Inventory Page Wireframe . . . . . . . . . . . . . . . . . . . . . . . . .
+4.4.5 Sales Order Page Wireframe . . . . . . . . . . . . . . . . . . . . . . .
+4.5 Ethical Considerations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+29
+29
+30
+30
+30
+30
+31
+31
+31
+32
+32
+32
+35
+37
+37
+38
+38
+39
+39
+40
+40
+
+5 Implementation and Testing
+5.1 From Architecture to Implementation . . . . . . . . . . . . . . . . . . . . . .
+5.2 Component Interaction Flow . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.3 Core Component Implementation . . . . . . . . . . . . . . . . . . . . . . . . .
+5.3.1 Design Tokens . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.3.2 Layout Components . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+41
+41
+43
+43
+44
+50
+
+2.8
+
+CONTENTS
+
+vi
+
+5.3.3 Dashboard Components . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.3.4 Utilities . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.3.5 Pages . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+Summary . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+58
+59
+60
+70
+
+6 Results and Discussion
+6.1 Revisiting Requirements . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6.1.1 Functional Requirements Evaluation . . . . . . . . . . . . . . . . . . .
+6.1.2 Non-Functional Requirements Evaluation . . . . . . . . . . . . . . . .
+6.2 Component Testing Results . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6.2.1 Screenshots of the ERP system in Use . . . . . . . . . . . . . . . . . .
+6.2.2 Functional Programming Benefits . . . . . . . . . . . . . . . . . . . . .
+6.2.3 Library Documentation . . . . . . . . . . . . . . . . . . . . . . . . . .
+6.3 Discussion & Goals Achieved . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6.3.1 Addressing ERP UI Development Challenges . . . . . . . . . . . . . .
+6.3.2 Developer Experience Impact . . . . . . . . . . . . . . . . . . . . . . .
+6.3.3 Comparative Advantages . . . . . . . . . . . . . . . . . . . . . . . . .
+6.3.4 Practical Implications . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6.4 Limitations . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6.4.1 Technical Limitations . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6.4.2 Developmental Challenges . . . . . . . . . . . . . . . . . . . . . . . . .
+6.5 Future Work . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6.5.1 Theme Switching Completion . . . . . . . . . . . . . . . . . . . . . . .
+6.5.2 Component Extensions . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6.5.3 Performance Optimizations . . . . . . . . . . . . . . . . . . . . . . . .
+6.6 Summary . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+71
+71
+71
+73
+74
+75
+82
+82
+85
+85
+86
+87
+87
+88
+88
+88
+89
+89
+90
+90
+90
+
+7 Conclusions
+7.1 Summary of Key Findings . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7.2 Contributions . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+7.3 Closing Reflections . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+92
+92
+93
+93
+
+5.4
+
+List of Figures
+3.1
+
+3.2
+3.3
+
+This diagram illustrates the architecture of an ERP UI Library based on functional programming principles, showing how the BasePage component enables
+the generation of various application pages. Created by me for this project
+(2025). . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+Risk Rating Key . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+Risk Register . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+20
+27
+28
+
+4.1
+4.2
+4.3
+4.4
+4.5
+4.6
+4.7
+4.8
+
+ERP UI Library Component Hierarchy . . . . . . . . . . . . . . . . . . . . . .
+High-level architecture of the The ERP UI library . . . . . . . . . . . . . . .
+User Flow Through the ERP UI Library . . . . . . . . . . . . . . . . . . . . .
+Base page wireframe . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+Login page wireframe . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+Dashboard wireframe . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+Inventory page wireframe . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+Sales order page wireframe . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+33
+34
+36
+38
+38
+39
+39
+40
+
+5.1
+
+Component interaction flow where user interactions with GTK widgets trigger
+event handlers, which invoke pure functions to compute new state, ultimately
+updating the UI via GTK functions . . . . . . . . . . . . . . . . . . . . . . .
+Font size hierarchy implementation establishing a coherent typographic system
+that enhances information structure in data-dense ERP interfaces . . . . . . .
+Font application pattern encapsulating both sizing and text setting in a single
+function call, reducing boilerplate and ensuring consistency . . . . . . . . . .
+Basic application of spacing values to GTK containers ensuring visual consistency across complex interfaces . . . . . . . . . . . . . . . . . . . . . . . . . .
+Custom spacing using the get function for flexible access to the spacing scale
+CSS Loader implementation example . . . . . . . . . . . . . . . . . . . . . . .
+Global stylesheet application ensuring consistent styling across the application
+while encapsulating side effects . . . . . . . . . . . . . . . . . . . . . . . . . .
+Component-specific styling enabling modular style composition similar to functional composition of data transformations . . . . . . . . . . . . . . . . . . . .
+Immutable references in token system code example . . . . . . . . . . . . . .
+
+5.2
+5.3
+5.4
+5.5
+5.6
+5.7
+5.8
+5.9
+
+vii
+
+43
+44
+44
+45
+45
+45
+46
+46
+47
+
+LIST OF FIGURES
+5.10 Pure functions in token system code example . . . . . . . . . . . . . . . . . .
+5.11 Higher-order functions in token system code example . . . . . . . . . . . . . .
+5.12 Token composition code example . . . . . . . . . . . . . . . . . . . . . . . . .
+5.13 Complete KPI card component using combined tokens . . . . . . . . . . . . .
+5.14 Header component implementation . . . . . . . . . . . . . . . . . . . . . . . .
+5.15 Footer component implementation providing consistent copyright information
+and auxiliary content . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.16 Button positioning components providing standard alignment patterns (left,
+right, centered) that ensure visual consistency across the application . . . . .
+5.17 Error dialog implementation . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.18 Error dialog usage example . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.19 Button position row implementation showing the three alignment components
+5.20 Button row usage examples showing alignment patterns . . . . . . . . . . . .
+5.21 Application state management implementation . . . . . . . . . . . . . . . . .
+5.22 Application state usage for authentication status and session management . .
+5.23 Menu navigation system implementation using higher-order functions for event
+handling . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.24 Menu navigation usage showing flexibility for different page contexts through
+pattern matching . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.25 KPI card usage examples showing how the component displays metrics with
+optional trend indicators using pattern matching . . . . . . . . . . . . . . . .
+5.26 Content panel implementation demonstrating flexible content containers with
+pattern matching for optional parameters . . . . . . . . . . . . . . . . . . . .
+5.27 Dashboard page demonstrating component composition to create informationrich interfaces with consistent visual styling . . . . . . . . . . . . . . . . . . .
+5.28 Table utilities implementation demonstrating functional approaches to creating data tables with higher-order functions . . . . . . . . . . . . . . . . . . .
+5.29 Image utilities implementation showing functional approach to error handling
+with option types . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.30 Standard page structure showing the consistent layout applied across all application screens . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.31 Step 1: Define the page using the BasePage functor . . . . . . . . . . . . . . .
+5.32 Step 2: Create the page instance and get content container . . . . . . . . . .
+5.33 Step 3: Add custom content to the page . . . . . . . . . . . . . . . . . . . . .
+5.34 BasePage functor implementation with PAGE signature ensuring consistent
+interfaces across all pages . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.35 Example application of the BasePage functor showing composition-based page
+creation . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+5.36 Menu bar creation with functional event handling . . . . . . . . . . . . . . . .
+5.37 Login page implementation structure . . . . . . . . . . . . . . . . . . . . . . .
+5.38 Login form with validation and error handling . . . . . . . . . . . . . . . . . .
+
+viii
+47
+47
+48
+49
+50
+51
+52
+53
+53
+54
+55
+55
+56
+57
+58
+58
+59
+59
+60
+60
+61
+61
+61
+62
+62
+63
+64
+65
+65
+
+LIST OF FIGURES
+
+ix
+
+5.39 Dashboard page with KPI cards in a grid layout . . . . . . . . . . . . . . . .
+5.40 Dashboard navigation to other application pages . . . . . . . . . . . . . . . .
+5.41 Inventory page structure with BasePage application . . . . . . . . . . . . . .
+5.42 Functional table refresh implementation . . . . . . . . . . . . . . . . . . . . .
+5.43 Removing selected inventory items with pattern matching . . . . . . . . . . .
+5.44 Sales order page structure with BasePage application . . . . . . . . . . . . . .
+5.45 Sales order table creation with functional list processing . . . . . . . . . . . .
+5.46 Navigation back to the dashboard from the sales order page . . . . . . . . . .
+
+66
+66
+67
+67
+68
+68
+69
+69
+
+6.1
+6.2
+6.3
+6.4
+6.5
+6.6
+6.7
+
+75
+76
+76
+76
+77
+78
+
+ERP System Login page with username and password fields . . . . . . . . . .
+Login error dialog showing invalid username or password message . . . . . . .
+ERP System Dashboard navigation bar with menu options . . . . . . . . . .
+Dashboard interface with Sales Order button . . . . . . . . . . . . . . . . . .
+Sales KPI overview showing Today’s Sales, Open Orders, and other metrics .
+Example of a Control Panel with an image inserted . . . . . . . . . . . . . . .
+Table table A: Inventory management using a purpose-built static table structure for product items with predefined columns for quantity and pricing, contrasting with dynamically rendered tables elsewhere in the system . . . . . .
+6.8 Table type B: Dynamically rendered table using a data file (Sales Orders table
+showing customer orders with status and totals) . . . . . . . . . . . . . . . .
+6.9 Dashboard overview with KPIs and product sales chart . . . . . . . . . . . .
+6.10 Add Inventory Item dialog with input fields for product details(button highlighted) . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6.11 Inventory modal pop up for adding new items . . . . . . . . . . . . . . . . . .
+6.12 Updated inventory list showing newly added Gadget D product . . . . . . . .
+6.13 Error dialog pop up . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+6.14 ERP UI Library Sphinx Documentation showing component framework references and examples . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . . .
+
+79
+79
+80
+80
+81
+81
+82
+84
+
+Acronyms
+ERP Enterprise Resource Planning. 3, 4
+FP Functional Programming. 4
+UI User Interface. 3, 4
+
+x
+
+Glossary
+Pure Function A function that, given the same input, always returns the same output and
+has no side effects. Pure functions in Standard ML form the foundation of predictable
+UI behavior in the ERP UI Library.
+Immutability The property of a data structure that cannot be modified after creation. In
+the ERP UI Library, immutable data structures ensure consistent application state and
+reduce unexpected behavior.
+Functor A higher-order module in Standard ML that generates new modules based on
+provided parameters. The ERP UI Library uses functors to create parameterized components like BasePage for consistent layouts.
+Higher-order Function A function that takes other functions as parameters or returns
+functions. The library uses higher-order functions extensively for event handling and
+component composition.
+Pattern Matching A programming technique in functional languages for checking and destructuring data. The ERP UI Library uses pattern matching for conditional rendering
+and error handling.
+Reference Cell A mutable container in Standard ML, represented by the ref type. The
+design token system uses reference cells to balance immutability principles with systemwide styling needs.
+Design Token A design system element that stores visual attributes like colors, typography,
+and spacing. The ERP UI Library implements tokens as functional modules with
+immutable references.
+KPI Key Performance Indicator, a quantifiable measure used to evaluate business performance. KPI cards in the ERP UI Library display these metrics with appropriate visual
+hierarchy.
+Immutable Data Structure Data structures that cannot be modified after creation, requiring new instances for changes. The ERP UI Library uses immutable data structures
+for predictable state management.
+
+1
+
+Acronyms
+
+2
+
+Currying The technique of transforming a function with multiple arguments into a sequence
+of functions each with a single argument. The ERP UI Library uses curried functions
+for flexible component configuration.
+DOM Document Object Model, a programming interface for web documents. While the
+ERP UI Library uses GTK+ rather than DOM, the compositional approach is conceptually similar to modern DOM-based frameworks.
+Memoization An optimization technique that stores the results of expensive function calls
+to avoid redundant calculations. Proposed as a future enhancement for the ERP UI
+Library’s performance.
+GTK+ GIMP Toolkit, a cross-platform toolkit for creating graphical user interfaces. The
+Giraffe library provides Standard ML bindings to GTK+, which the ERP UI Library
+uses for rendering.
+Foreign Function Interface (FFI) A mechanism allowing code written in one programming language to call code written in another. Giraffe uses FFI to connect Standard
+ML with C-based GTK+ functions.
+
+Chapter 1
+
+Introduction
+This chapter introduces the background, research aims, and overall structure of the dissertation, setting the context for the exploration of functional programming approaches to
+enterprise UI development.
+
+1.1
+
+Background: A Functional Approach to Enterprise UI Libraries
+
+Enterprise Resource Planning (ERP) platforms are among the largest, most complex, and
+business-critical software systems in use today. Consequently, the quality of the underlying design and implementation of User Interface (UI) libraries has a direct impact on user
+productivity, maintenance cost, and overall system longevity [Sommerville, 2015]. Despite
+vendor efforts to provide configurable ERP platforms, [Retain International, 2024] reports
+that around 80% of organisations still find it necessary to customise system components including the UI layer during implementation. Research by [Dittrich and Vaucouleur, 2008],
+further, highlights that such modifications, often performed in-house or by integrators, introduce significant maintenance burdens and complicate long-term upgrades.
+The user interfaces of contemporary ERP systems predominantly rely on the imperative
+and object-oriented programming paradigms, with JavaScript frameworks such as React and
+Angular, alongside traditional systems like Java Swing, dominating enterprise UI development (Yang, 2024). These frameworks offer substantial benefits through their mature ecosystems, extensive community support, and established patterns for component reusability (often
+based on object-oriented design). However, they typically involve direct manipulation of UI
+elements and managing mutable state, which can introduce challenges related to state management, side effects, and testing, particularly at enterprise scale [Deng, 2024, Yang, 2024].
+Visual and behavioural consistency across UI components represents a particular challenge in large-scale systems. As Dusted (2024) observes, achieving this consistency does more
+than simply enhance usability for end users; it also brings significant advantages to organisations as a whole. When interface elements behave and appear predictably, users experience
+
+3
+
+CHAPTER 1. INTRODUCTION
+
+4
+
+reduced cognitive load and can navigate complex applications with greater confidence, fostering trust and improving the overall user experience. For organisations, a consistent UI
+streamlines development workflows and makes it easier to scale design efforts across teams,
+while also helping to prevent the gradual deterioration of UI quality that often plagues evolving enterprise systems. These benefits are not merely theoretical: studies indicate that as
+much as 75% of brand credibility judgements are based on design, underscoring the central
+role that interface consistency plays in both user satisfaction and organisational effectiveness
+[Dusted, 2024].
+The rise of Functional programming paradigms presents an alternative approach with theoretical advantages for UI development. Functional programming emphasises immutability
+and pure functions, meaning UI components describe the interface as a result of data transformations rather than direct manipulation. Specifically, languages such as SML, through
+libraries like Giraffe, provide mechanisms for developers to express UI components as pure
+functions, potentially yielding systems that are more maintainable, predictable, and easier to
+reason about by reducing side effects [Deng, 2024].
+Despite offering theoretical advantages for UI development, Functional Programming
+(FP) approaches remain under-represented in demanding enterprise contexts, particularly
+within production-grade ERP systems. This is evidenced by the 2024 Stack Overflow
+Developer Survey, which reveals that only a small minority (3.4%) of developers working on major ERP platforms (SAP, Oracle, or Dynamics) reported using an FP-first UI
+stack [Stack Overflow Insights, 2024]. This figure stands in stark contrast to the widespread
+adoption of mainstream imperative frameworks like React (39.5%), Next.js (17.8%), Vue.js
+(15.4%), and AngularJS (6.8%). Furthermore, the scarcity of published case studies on applying FP principles in practical ERP UI development highlights a significant gap in both
+industry practice and existing research.
+This dissertation addresses this gap by investigating the question:
+How can functional programming principles be effectively applied to develop
+enterprise-grade UI libraries that improve Maintainability, Consistency, Type
+safety, and Developer Productivity compared to traditional imperative approaches?
+The methodology employed in this research combines theoretical analysis with practical implementation, focusing on the design and development of a foundational UI library
+using SML and the Giraffe library for the GTK toolkit. Established UI patterns particularly those from React’s component model are adapted into a purely functional context, with
+the resulting library evaluated against the ERP framework developed in the early stages
+of the research. This approach demonstrates how functional programming can address key
+challenges in enterprise UI development, especially those related to state management, component composition, type safety, and, crucially, consistency across user interfaces. While this
+methodology yields significant insights, it is important to acknowledge its limitations: the
+research focuses primarily on desktop applications rather than web interfaces, which may
+limit the generalisability of findings to browser-based ERP systems.
+
+CHAPTER 1. INTRODUCTION
+
+5
+
+This research contributes to ongoing efforts to connect academic perspectives on functional programming with the practical realities of UI development in enterprise contexts.
+By examining how functional paradigms align with the needs of complex systems, it offers
+observations that may be relevant to the future design of UI libraries and frameworks.
+The resulting prototype implementation and associated documentation are available online at https://github.com/Omosefe-osakue/OmosefesDissertationRepo/tree/main/
+THE_ERP_UI_LIBRARY, providing a foundation for further research and practical application
+in this promising intersection of functional programming and enterprise UI development.
+
+1.2
+
+Structure of the Dissertation
+
+The dissertation is organised as follows:
+• Chapter 2 (Literature Review): Provides background on Enterprise Resource Planning (ERP) systems, examines existing User Interface development paradigms (both
+imperative and functional), and discusses Standard ML and relevant libraries like Giraffe, establishing the context for the research.
+• Chapter 3 (Requirements and Methodology): Details the requirements analysis
+conducted for the ERP UI library and outlines the mixed-method research approach
+used for its design, implementation, and evaluation.
+• Chapter 4 (Design and Implementation): Presents the architectural design and
+core implementation details of The ERP UI Library, showcasing how functional programming principles are applied to construct UI components using SML and Giraffe.
+• Chapter 5 (Evaluation): Evaluates the developed library based on the criteria established in the methodology, discussing its strengths and weaknesses concerning maintainability, type safety, consistency, and developer productivity.
+• Chapter 6 (Results and Discussion): Discusses the findings of the evaluation,
+• Chapter 7 (Conclusion): Concludes the dissertation, summarising the key findings
+and their implications for future research and practical application.
+;
+
+1.3
+
+Relationship of this Project and my Degree Programme
+
+This dissertation is closely aligned with the core areas of my Computer Science degree, particularly those concerned with programming paradigms, software design, and user interface
+development. The project investigates how functional programming principles can be used
+to develop a modern UI library for enterprise contexts using Standard ML (SML) and the
+
+CHAPTER 1. INTRODUCTION
+
+6
+
+Giraffe library. In doing so, it draws directly on concepts from modules in object-oriented and
+functional programming languages, software engineering, and human-computer interaction.
+The degree programme has provided me with a strong foundation in both object-oriented
+and functional programming. This project offers an opportunity to extend that knowledge
+by applying functional techniques such as pure functions, immutability, and strong static
+typing to a real-world domain where such approaches remain under-utilised: enterprise UI
+development.
+Moreover, this work involves adapting architectural ideas from widely adopted imperative
+frameworks like React, covered in discussions on component models and UI patterns to a
+purely functional paradigm. This reinforces my understanding of language design trade-offs,
+design pattern translation, and software maintainability, which are key themes across several
+taught modules.
+This dissertation brings together different parts of my degree ,programming theory, UI
+design, and applied software engineering ,to explore how functional programming can support the development of scalable and maintainable systems. While not exhaustive, it lays
+groundwork that could be useful in both future academic research and practical development
+
+1.4
+
+Aims and Objectives
+
+The primary aim of this dissertation is to explore how functional programming principles
+can be effectively applied to the development of enterprise-grade user interface (UI) libraries.
+Specifically, the project sought to design and implement a prototype UI framework using
+Standard ML (SML) and the Giraffe library, demonstrating how functional paradigms, such
+as immutability, pure functions, and strong static typing can enhance maintainability, consistency, type safety, and developer productivity in UI development.
+To achieve this aim, the dissertation pursues the following objectives:
+• Design and implement a modular UI library using SML and the Giraffe library,
+incorporating modern UI/UX design patterns such as component-based architecture,
+and declarative rendering.
+• Adapt and translate established interface patterns from mainstream imperative
+frameworks (notably React and Vue) into a purely functional context, ensuring conceptual familiarity while maintaining functional integrity.
+• Evaluate the resulting framework through comparative analysis with widely used
+JavaScript-based UI libraries, focusing on dimensions such as maintainability, type
+safety, development ergonomics, and ease of testing.
+• Document the framework and methodology comprehensively to support reproducibility, encourage adoption, and lower the barrier to entry for developers unfamiliar
+with functional UI development.
+
+CHAPTER 1. INTRODUCTION
+
+7
+
+• Provide a publicly available prototype and repository that can serve as a practical foundation for further academic and industrial exploration into functional approaches to UI development.
+By grounding the library’s design in proven interface paradigms and evaluating it against
+modern development standards, this dissertation aims to demonstrate the viability and potential benefits of functional programming in the context of ERP-scale desktop applications.
+The work intentionally builds upon established JavaScript UI patterns to avoid redundant
+innovation and to ensure relevance to current industry practices.
+
+Chapter 2
+
+Literature Survey
+2.1
+
+Introduction
+
+The development of robust and maintainable User Interfaces (UIs) for Enterprise Resource
+Planning (ERP) systems presents significant challenges for software engineers. Whilst traditional imperative and object-oriented approaches have dominated UI development, functional
+programming (FP) paradigms offer compelling alternatives that may address persistent issues
+in state management, modularity, and consistency [Hughes, 1990].
+This chapter examines the literature relevant to applying functional programming principles to UI development, with specific focus on SML and the Giraffe library. It begins by
+contrasting imperative and functional UI paradigms, highlighting their respective strengths
+and limitations. The chapter then addresses the specific challenges of Enterprise Resource
+Planning (ERP) user interfaces and how functional approaches might address them. Subsequently, it explores SML’s features that make it suitable for developing reliable software
+systems. The chapter then analyzes the Giraffe library as an enabling technology for developing GTK-based graphical interfaces in SML.
+Following this, the chapter discusses established UI design principles, emphasizing consistency as a critical factor in effective enterprise applications. Finally, a comparative analysis
+of mainstream JavaScript frameworks (React, Vue.js, and Angular) establishes context for
+the functional approach proposed in this dissertation. This survey provides the theoretical
+foundation for developing The ERP UI Library, a component framework designed to enhance maintainability, consistency, type safety, and developer productivity in enterprise UI
+development.
+
+2.2
+
+Paradigms in User Interface Development
+
+2.2.1
+
+The Imperative Approach
+
+Imperative UI development represents the conventional paradigm underlying many established frameworks, including Java Swing and traditional Document Object Model (DOM)
+
+8
+
+CHAPTER 2. LITERATURE SURVEY
+
+9
+
+manipulation in web browsers. In this approach, developers write sequences of commands
+that directly modify UI components in response to events. For example, when a user clicks
+a button, an imperative handler might locate a text label in the UI hierarchy and explicitly
+update its contents.
+This approach provides developers with precise control over UI elements and their behaviours. However, it often leads to complex event-driven architectures where state changes
+are distributed across numerous handlers. As applications scale, the challenge of maintaining
+consistency between the UI and underlying application state grows significantly. Developers
+must manually ensure that every UI update properly synchronizes with the application state,
+a requirement that becomes increasingly difficult to satisfy in complex systems.
+Common issues in imperative UI development include:
+• ”Callback Hell”: Deeply nested or chained event callbacks that become difficult to
+reason about and maintain [Czaplicki and Chong, 2013]
+• State Synchronization: Challenges in keeping UI elements consistent with application state across multiple update points
+• Unpredictable Side Effects: Modifications to shared state from different components
+leading to unexpected behaviours
+In web development specifically, when multiple sections of code directly manipulate the
+DOM without a centralized state management strategy, applications become prone to inconsistencies that compromise both reliability and user experience.
+
+2.2.2
+
+The Functional Approach
+
+Functional UI development conceptualizes the interface as a deterministic function of application state, rather than a series of mutations to existing UI elements. In this paradigm, when
+state changes, a new representation of the UI is generated based on the updated state. This
+approach emphasizes immutable data structures and pure functions, functions that always
+produce the same output given the same input and avoid side effects [Hughes, 1990].
+Functional Reactive Programming (FRP) represents a sophisticated manifestation of this
+approach, modeling user interfaces through time-varying values (signals or event streams)
+and functions that respond to changes in these values [Czaplicki and Chong, 2013]. Elm, a
+statically-typed functional language designed specifically for web interfaces, exemplifies this
+paradigm through its Model-View-Update (MVU) architecture [Czaplicki, 2012]:
+• Model: An immutable data structure representing application state
+• View: A pure function that transforms the current Model into a UI description
+• Update: A pure function that processes user events to produce a new Model
+
+CHAPTER 2. LITERATURE SURVEY
+
+10
+
+This architecture separates UI rendering logic from state transition logic, with the runtime
+system efficiently implementing the transitions between UI states. The result is significantly
+improved code clarity and maintainability, as state changes predictably generate new UI
+representations without requiring developers to explicitly program the transition mechanics.
+A core advantage of functional UI development is enhanced modularity through higherorder functions [Hughes, 1990]. In UI contexts, higher-order functions enable the creation of
+reusable, composable components that maintain consistent behavior. Though SML is a strict
+(eagerly evaluated) language unlike some functional languages that leverage lazy evaluation,
+the principle of building complex interfaces from simple, predictable components remains
+applicable and valuable.
+The functional approach often eliminates entire categories of runtime errors. For instance, Elm famously guarantees no runtime exceptions in properly typed user code, issues like null reference errors are identified during compilation rather than execution
+[Czaplicki and Chong, 2013].
+
+2.2.3
+
+Relationship Between Paradigms
+
+Whilst this dissertation focuses on functional approaches, it’s essential to recognize that pure
+functional UI frameworks must ultimately interact with imperative systems to render pixels
+on screen and respond to user input. The key distinction lies in where imperative effects
+are managed: functional systems typically encapsulate side effects within the framework or
+runtime, maintaining application logic as pure functions, whilst traditional approaches often
+distribute side-effecting operations throughout application code.
+Many contemporary systems adopt hybrid approaches that incorporate functional concepts for state management whilst operating within primarily imperative environments. This
+literature review now examines Standard ML, a language that supports both functional and
+controlled imperative programming, and its potential for enterprise UI development.
+
+2.3
+
+Enterprise Resource Planning (ERP) UI Challenges
+
+Enterprise Resource Planning systems represent some of the most complex software applications deployed in business environments, integrating diverse business processes across departments into a unified system [Sommerville, 2015]. The user interfaces for such systems face
+unique challenges that distinguish them from consumer-facing or single-purpose applications:
+• Long-term Maintenance: ERP systems often remain in service for decades, undergoing multiple updates and extensions. This longevity amplifies the importance of
+maintainable UI code that can evolve without introducing inconsistencies or regressions
+[Dittrich and Vaucouleur, 2008].
+• Performance Under Load: ERP interfaces must remain responsive whilst handling
+complex state transitions and large data sets. Performance degradation can signif-
+
+CHAPTER 2. LITERATURE SURVEY
+
+11
+
+icantly impact organisational productivity given the critical nature of these systems
+[Sommerville, 2015].
+• Consistency Across Modules: As Dusted (2024) observes, consistency is paramount
+in ERP systems where users navigate between different functional modules. Inconsistent interfaces increase cognitive load and training requirements whilst reducing user
+confidence and efficiency [Dusted, 2024].
+The functional programming paradigm offers several characteristics that align well with
+these ERP-specific challenges. Immutability and pure functions can make complex state
+transitions more predictable, supporting reliable operation even as the system scales. Strong
+typing helps enforce consistency across diverse components and prevents entire classes of
+runtime errors that might otherwise manifest in production. Higher-order functions enable
+flexible composition patterns that support both configuration requirements and long-term
+maintenance needs.
+However, addressing these ERP-specific challenges requires more than theoretical advantages it demands practical solutions that developers can implement and maintain. The
+following sections examine how SML and the Giraffe library might provide the foundation
+for such solutions.
+
+2.4
+
+Standard ML (SML) for UI Development
+
+Standard ML (SML) is a statically-typed functional programming language distinguished
+by its robust type system, comprehensive module facilities, and support for both functional
+and controlled imperative programming [Gilmore, 2003]. SML’s design philosophy combines
+”the elegance of functional programming with the effectiveness of imperative programming”
+[Gilmore, 2003], offering a pragmatic approach that emphasizes functional techniques whilst
+acknowledging the occasional necessity of controlled side effects.
+Several key features make SML particularly suitable for developing robust UI systems:
+
+2.4.1
+
+Type System and Safety
+
+SML implements a powerful Hindley-Milner type system with complete type inference. The
+compiler automatically deduces types for expressions without requiring explicit annotations,
+producing concise code whilst maintaining comprehensive type safety [Gilmore, 2003]. This
+system catches numerous errors during compilation that might otherwise manifest during
+runtime in less strictly typed languages.
+The type system supports algebraic data types (ADTs), which allow precise modeling
+of application domains and UI states. Pattern matching provides a declarative mechanism
+for safely deconstructing these types, leading to more robust code. For example, a UI event
+handler can exhaustively match against all possible event variants, with the compiler ensuring
+complete coverage, preventing the omission of important cases that could lead to runtime
+failures.
+
+CHAPTER 2. LITERATURE SURVEY
+
+2.4.2
+
+12
+
+Module System
+
+SML’s sophisticated module system comprises structures (implementations), signatures (interfaces), and functors (parameterized modules). This system facilitates the development
+of large-scale, maintainable software by enabling clear separation of concerns and consistent
+interface definitions.
+For UI libraries, this module system allows developers to define abstract component interfaces whilst providing alternative implementations that adhere to those interfaces. This
+approach supports both code reuse and testability, a component can be replaced with a
+simplified version for testing without altering dependent code [Reeves, 2017] .
+
+2.4.3
+
+Controlled Imperative Features
+
+Whilst predominantly functional, SML includes imperative constructs such as references (mutable storage cells) and arrays when performance or external system interaction demands
+them. Importantly, these features are used selectively within a primarily functional codebase, with explicit typing that highlights where state mutation occurs. This transparency
+makes side effects easier to manage and reason about compared to languages where mutability
+is the default.
+
+2.4.4
+
+Historical Context for UI Development
+
+Despite SML’s technical strengths, its adoption for GUI development has historically been
+limited by insufficient library support compared to mainstream languages like Java or Python.
+Early efforts such as eXene provided X11-based GUI capabilities for SML/NJ, but remained
+relatively specialized.
+Recent developments, particularly the Giraffe library’s integration with the widely used
+GTK toolkit, have significantly enhanced SML’s viability for practical GUI application development. By leveraging SML’s Foreign Function Interface (FFI) capabilities, Giraffe enables
+SML developers to build sophisticated graphical interfaces whilst maintaining the language’s
+functional integrity and type safety benefits. These qualities are particularly relevant to
+ERP systems, where type safety can help prevent data integrity issues whilst supporting the
+complex relational data structures typical in enterprise environments.
+
+2.5
+
+The Giraffe Library: Enabling GTK+ Development in
+SML
+
+The Giraffe Library represents a crucial technological bridge, enabling SML programs to
+create fully-featured graphical user interfaces using the GTK framework, a comprehensive,
+industry-standard toolkit for GUI development [Clayton, ]. Giraffe achieves this integration
+through GObject Introspection, a metadata system that enables language bindings for C
+libraries to be generated automatically.
+
+CHAPTER 2. LITERATURE SURVEY
+
+2.5.1
+
+13
+
+Technical Architecture
+
+GObject Introspection allows C libraries like GTK and GLib to expose their APIs through
+standardised metadata files (GIR files). Giraffe uses these metadata descriptions to automatically generate corresponding SML bindings, allowing SML developers to instantiate and
+manipulate GTK widgets as if they were native SML constructs [Clayton, ]. This approach
+offers several advantages:
+• Comprehensive Coverage: Automated generation provides bindings for a substantial portion of the GTK ecosystem with minimal manual intervention
+• Maintainability: As GTK evolves, Giraffe can incorporate new features by simply
+regenerating bindings from updated metadata
+• Consistency: Generated bindings follow consistent patterns, making the API more
+predictable for developers
+This auto-generation approach contrasts favourably with previous efforts like mGTK (Giraffe’s predecessor), which required extensive manual binding code and consequently became
+difficult to maintain as GTK evolved [Reeves, 2017].
+
+2.5.2
+
+Integration with SML
+
+Giraffe extends several important SML characteristics to GTK development:
+• Type Safety: SML’s static type system is applied to GTK widget operations, preventing many common errors at compile time rather than runtime
+• Memory Management: SML’s garbage collector handles memory for GTK objects,
+substantially reducing memory leaks and dangling pointer issues common in C based
+GUI programming
+• Functional Patterns: Whilst GTK itself follows an object-oriented paradigm, Giraffe
+allows developers to wrap GTK interactions within SML’s functional abstractions, particularly for event handling
+
+2.5.3
+
+Practical Applications and Research
+
+Recent research demonstrates Giraffe’s potential for real-world applications. Reeves (2017)
+documents extensions to Giraffe, such as adding support for GLib’s GSList data structure,
+illustrating how the library continues to evolve to support more complete GTK functionality
+[Reeves, 2017].
+Yang (2024) conducted a comprehensive comparative study implementing equivalent library management systems using both Java Swing and SML with Giraffe. The research
+found that the SML/Giraffe implementation benefited significantly from SML’s immutability
+
+CHAPTER 2. LITERATURE SURVEY
+
+14
+
+and compile-time type checking, identifying many potential errors during compilation that
+would only be detectable at runtime in the Java version [Yang, 2024]. This empirical evidence
+supports Giraffe’s viability for developing non-trivial applications and demonstrates concrete
+advantages of the functional approach in a comparative context.
+The successful implementation of complete applications using Giraffe establishes it as
+a suitable foundation for the ERP UI library proposed in this dissertation. Whilst the
+functional paradigm introduces some learning challenges compared to mainstream imperative
+frameworks, it offers significant compensating advantages in type safety, predictability, and
+long-term maintainability—qualities particularly valuable in enterprise contexts.
+
+2.6
+
+UI Design Principles and Consistency in Functional UIs
+
+Whilst the choice of programming paradigm significantly influences development methodology, it does not inherently guarantee well designed user interfaces. Established Human
+Computer Interaction (HCI) principles remain essential regardless of the underlying implementation approach. This section examines UI consistency as a critical design principle and
+explores how functional programming can support its achievement, particularly in enterprise
+applications.
+
+2.6.1
+
+The Fundamental Importance of UI Consistency
+
+Consistency in user interface design refers to the principle that similar elements should maintain predictable appearance and behaviour throughout an application and, where appropriate, across different applications or platforms. Sommerville [Sommerville, 2015] and industry
+practitioners at Dusted [Dusted, 2024] categorise consistency into several dimensions:
+• Visual Consistency: Uniformity in appearance elements, including color schemes,
+typography, spacing, layouts, and iconography
+• Functional Consistency: Predictable behaviour in interactive elements for example
+ensuring that similar buttons produce similar feedback and actions across an application
+• Internal Consistency: Coherence with the application’s own conventions and logic
+• External Consistency: Alignment with platform standards and widely accepted conventions
+Research demonstrates that consistent interfaces significantly reduce cognitive load for
+users, accelerate learning, minimize errors, and enhance both productivity and satisfaction
+[Dusted, 2024]. For ERP systems, where users interact with complex functionality across numerous modules, consistency becomes particularly crucial it enables users to transfer knowledge from familiar components to new areas of the application, reducing training requirements
+and operational friction.
+
+CHAPTER 2. LITERATURE SURVEY
+
+2.6.2
+
+15
+
+Design Systems as Practical Consistency Frameworks
+
+Design systems are collections of reusable components, patterns, and guidelines that provide a
+concrete mechanism for ensuring consistency in large applications [Dusted, 2024]. An effective
+design system typically includes:
+• Core Element Definitions: Standardization of fundamental design aspects such as
+color palettes, typography scales, spacing units, and iconography styles
+• Component Libraries: Reusable UI elements with consistent appearance and behaviour that can be composed to create complex interfaces
+• Usage Guidelines: Documentation that explains when and how to apply specific
+components and patterns
+
+2.6.3
+
+Functional Programming’s Contribution to Consistency
+
+Functional programming principles align naturally with design system objectives, offering
+several mechanisms that enhance consistency:
+• Component Composition through Higher-Order Functions: Higher-order functions enable the creation of reusable UI components with consistent behaviour. For
+example, in an SML/Giraffe context, a function could create buttons with consistent
+styling, padding, and feedback behaviour throughout an application.
+• Immutable State Management: Immutability ensures that UI components cannot
+be arbitrarily modified once created. Each state transition results in a new, well-defined
+representation, making interface behaviour more predictable and testable. This eliminates certain classes of consistency errors where components might be unintentionally
+modified by distant parts of the application.
+• Type-Safe Components: SML’s type system ensures that components receive appropriate properties and event handlers. For example, a component that requires specific
+configuration cannot be instantiated without providing all required parameters, preventing inconsistencies from incomplete initialization.
+• Pure Functional Rendering: When UI rendering is implemented as pure functions of
+application state, the same state always produces the same UI output. This determinism
+is fundamental to maintaining consistency it guarantees that identical states will never
+result in different UI representations.
+Practical implementations of these principles might include developing a library of consistent form controls in SML, where each control is generated by a function that enforces styling
+standards, validation behaviours, and accessibility requirements. The immutable approach
+
+CHAPTER 2. LITERATURE SURVEY
+
+16
+
+ensures that once rendered, these controls maintain their properties until explicitly regenerated with new state, providing a more reliable guarantee of consistency than imperative
+approaches where controls might be modified through various code paths.
+This example will highlight the practical implementation of visual and functional consistency,
+directly reflecting the guidelines advocated by Dusted’s
+recommendations[Dusted, 2024].
+
+2.7
+
+Comparative Analysis of Mainstream UI Frameworks
+
+To contextualise the SML/Giraffe approach proposed in this dissertation, it is valuable to examine the dominant JavaScript-based UI frameworks that currently shape industry practice.
+These frameworks have significantly influenced contemporary UI development approaches
+and provide important reference points for evaluating alternative paradigms. This section
+outlines the core characteristics of React, Vue.js, and Angular, then contrasts them with the
+proposed functional approach.
+
+2.7.1
+
+React: Component-Based UI Development
+
+React, developed by Facebook (now Meta), is a JavaScript library focused on building
+component-based user interfaces [The official React documentation, ]. Its defining characteristics include:
+• Core Paradigm: React encourages developers to create encapsulated components that
+maintain their own state. It employs JSX, an XML-like syntax extension for JavaScript,
+to describe component structure.
+• Virtual DOM: React maintains a lightweight in-memory representation of the actual browser DOM. When state changes, React first updates this Virtual DOM, then
+efficiently calculates and applies only the necessary changes to the browser DOM.
+• State Management: Whilst components can maintain local state, larger applications
+typically employ external state management solutions like Redux, which itself incorporates functional programming concepts through immutable state and pure reducer
+functions, these are functions that take the current state and an action as input and
+return a new state without causing side effects [Redux Team, 2024, Staltz, 2017].
+For readers unfamiliar with web development frameworks, React represents a shift towards
+more declarative UI programming within JavaScript, though the underlying language remains
+flexible regarding side effects and mutability. React’s component model has been highly
+influential, demonstrating the benefits of encapsulation and composition in UI development.
+
+CHAPTER 2. LITERATURE SURVEY
+
+2.7.2
+
+17
+
+Vue.js: Progressive Framework with Reactive Data Binding
+
+Vue.js positions itself as a progressive JavaScript framework with an emphasis on approachability and incremental adoption [Vercel, 2021]:
+• Core Paradigm: Vue allows developers to create templates with declarative data
+binding. When data changes, the DOM updates automatically based on these bindings.
+• Reactivity System: Vue’s defining feature is its fine-grained reactivity system, which
+automatically tracks dependencies between data and the DOM, updating only affected
+components when data changes.
+• Component Architecture: Like React, Vue supports component-based development,
+but with a more template-oriented approach that separates HTML, CSS, and JavaScript
+more explicitly.
+For non-specialists, Vue represents a middle ground between traditional web development
+approaches and more radical frameworks. Its template-based approach can feel more familiar
+to developers with conventional web experience, whilst its reactivity system introduces more
+sophisticated state management concepts.
+
+2.7.3
+
+Angular: Comprehensive Platform and Framework
+
+Angular, developed by Google, provides a complete platform for building complex applications [The official AngularJS documentation, ]:
+• Core Paradigm: Angular implements a comprehensive framework that includes builtin solutions for routing, form handling, HTTP communication, and dependency injection. It enforces a stronger architectural opinion than React or Vue.
+• TypeScript Integration: Angular strongly encourages the use of TypeScript, bringing static typing to JavaScript development and enhancing compile-time error detection.
+• Component Model: Angular employs a component architecture with detailed metadata and lifecycle hooks, typically combining HTML templates with TypeScript classes.
+For readers without web development expertise, Angular can be understood as the most
+prescriptive of the three frameworks, providing integrated solutions for common application
+needs rather than expecting developers to select from ecosystem alternatives. Its embrace of
+TypeScript represents a step towards stronger typing.
+
+2.7.4
+
+Contrasting with the SML/Giraffe Approach
+
+The SML/Giraffe approach central to this dissertation differs from these JavaScript frameworks in several fundamental ways:
+
+CHAPTER 2. LITERATURE SURVEY
+
+18
+
+• Type System: SML provides a more rigorous static type system with algebraic data
+types and exhaustive pattern matching. Whilst TypeScript adds types to JavaScript,
+SML’s type system is integrated into the language core and offers stronger guarantees.
+• Immutability and Side Effect Management: SML promotes immutability by default and provides clearer mechanisms for isolating side effects. JavaScript frameworks
+can implement immutable patterns (as in Redux), but the underlying language and
+ecosystem remain fundamentally more permissive regarding mutation and side effects.
+• Compilation vs. Interpretation: SML is compiled, with extensive type checking
+performed before execution. This contrasts with JavaScript’s interpreted nature, even
+when using TypeScript, which is ultimately transpiled to JavaScript.
+• Target Environment: Whilst JavaScript frameworks primarily target web browsers
+(with some cross-platform capabilities via technologies like React Native), the
+SML/Giraffe approach focuses on desktop applications using GTK. This difference in
+target environment influences design decisions and architectural constraints.
+The proposed SML/Giraffe UI library aims to leverage SML’s stronger guarantees regarding type safety and functional purity to create more predictable, maintainable UI systems
+for enterprise contexts. Rather than competing directly with JavaScript frameworks in their
+primary domain (web applications), it explores how functional programming principles can
+address the specific challenges of complex desktop applications for ERP systems, where longterm maintainability and consistency are particularly valuable.
+
+2.8
+
+Conclusion
+
+This literature review has examined the key theoretical and practical foundations for developing a functional UI library using Standard ML and the Giraffe library. It has contrasted
+imperative and functional approaches to UI development, highlighting how functional programming principles can address persistent challenges in state management, component composition, and UI consistency. The analysis of SML has demonstrated its suitability for building robust software systems through its strong type system, module facilities, and controlled
+approach to side effects.
+The examination of the Giraffe library has established its viability as a foundation for
+practical GUI development in SML, providing access to the comprehensive GTK toolkit
+whilst maintaining SML’s functional integrity and type safety advantages. The discussion
+of UI design principles, particularly consistency, has illustrated how functional programming
+naturally supports many best practices in interface design through immutability, composition,
+and type safety.
+Finally, the comparative analysis of mainstream JavaScript frameworks has contextualised the proposed approach, clarifying both the inspiration that can be drawn from these
+
+CHAPTER 2. LITERATURE SURVEY
+
+19
+
+frameworks and the distinct advantages that a more rigorously functional approach might
+offer for enterprise applications.
+The existing literature reveals a significant research gap in the application of stronglytyped functional languages to enterprise UI development, particularly for ERP systems.
+Whilst functional programming has demonstrated advantages in domains valuing correctness and maintainability, and JavaScript frameworks have incorporated selected functional
+concepts, the full potential of applying a language like SML to enterprise UI challenges remains largely unexplored.
+This dissertation aims to address this gap through the design, implementation, and evaluation of The ERP UI Library — a component framework that translates established UI
+patterns into a functional context to enhance maintainability, consistency, type safety, and
+developer productivity in enterprise software development. The subsequent chapters will
+detail the methodology, implementation, and evaluation of this approach.
+
+Chapter 3
+
+Requirements and analysis
+
+Figure 3.1: This diagram illustrates the architecture of an ERP UI Library based on functional
+programming principles, showing how the BasePage component enables the generation of
+various application pages. Created by me for this project (2025).
+To ensure the effectiveness, usability, and technical viability of the ERP UI Library for
+functional programming languages, a comprehensive requirements analysis was conducted.
+This analysis identifies the specific needs of developers using Standard ML with the Giraffe
+GTK bindings for building Enterprise Resource Planning interfaces, addressing the current
+lack of component-based UI frameworks in the functional programming ecosystem. The
+20
+
+CHAPTER 3. REQUIREMENTS AND ANALYSIS
+
+21
+
+library aims to bridge the gap between modern UI development patterns commonly found
+in web frameworks like React and the functional programming paradigm of Standard ML,
+providing a consistent, reusable component system for building ERP applications.
+
+3.1
+
+Requirements of the system
+
+The SML/Giraffe user interface library incorporates well-defined functional and nonfunctional requirements, carefully structured to provide dependable interface components
+for ERP systems. These requirements are organised as follows:
+• User Stories These capture requirements from the end-user perspective, offering valuable insight into actual usage patterns. The stories are categorised by user role to ensure
+comprehensive coverage across different ERP system users. A complete breakdown of
+these stories with their assigned priorities appears in Table 3.7
+• Functional Features These represent the core capabilities of the library, what it actually does and how effectively it performs its essential operations. Functional features
+focus on the specific behaviours that support ERP workflows and data management.
+A detailed catalogue of these features are provided in Tables 3.2, 3.4, 3.3, 3.5
+• Non-Functional Features These address the qualitative aspects of the library how
+reliably, efficiently, and securely it performs rather than what specific functions it provides. Table 3.6 lists these features in detail.
+They have been prioritised using the MoSCoW framework, categorising each as MustHave, Should-Have, Could-Have, or Won’t-Have. This prioritisation approach ensures development resources are allocated appropriately. The MoSCoW framework is given in Table
+3.1
+Category
+Must-Have
+
+Should-Have
+
+Could-Have
+
+Won’t-Have
+
+Description
+Core requirements essential for system viability. These represent nonnegotiable functionality without which the system would fail to meet its
+primary purpose.
+Important features that significantly enhance the system’s value and
+utility. While the system remains functional without them, their inclusion substantially improves performance or user experience.
+Desirable enhancements that extend beyond core functionality. These
+features provide additional benefits but their absence does not compromise the system’s fundamental operation.
+Features explicitly excluded from the current development cycle. These
+items may be reconsidered for future releases but are not prioritised
+within the existing implementation timeframe.
+Table 3.1: MoSCoW Priority Framework
+
+CHAPTER 3. REQUIREMENTS AND ANALYSIS
+
+3.1.1
+
+22
+
+Mixed-Method Research Approach
+
+This dissertation employs a mixed-method research approach as outlined in Chapter 1, integrating theoretical analysis with practical implementation and comparative evaluation. The
+research methodology encompasses multiple phases and approaches:
+• Theoretical Analysis: This phase involves the examination of functional programming principles, UI development paradigms, and their intersection in enterprise contexts. It serves as the foundation for identifying the potential advantages of functional
+approaches in addressing persistent ERP UI challenges.
+• Practical Implementation: The practical phase focuses on developing a working
+prototype of the ERP UI Library using SML and Giraffe. This implementation tests the
+feasibility of applying functional programming concepts to enterprise UI development
+and provides empirical evidence of its benefits and challenges.
+
+3.1.2
+
+Requirements Gathering Methodology
+
+Within this mixed-method framework, requirements for the library were gathered through
+multiple channels to ensure comprehensive coverage:
+• Literature review: Examination of existing UI libraries in both functional and objectoriented paradigms, including React, Angular, and Elm, to identify successful patterns
+that could be adapted to SML.
+• Analysis of ERP interfaces: Evaluation of common interface patterns in enterprise
+systems to identify necessary components and layouts such as odoo and SAP s/4hana.
+• SML/Giraffe capability assessment: Technical investigation of Standard ML’s capabilities and the Giraffe GTK bindings to determine feasibility and implementation
+strategies.
+• Functional programming paradigm considerations: Analysis of how componentbased UI architectures can be adapted to functional programming principles while maintaining the benefits of both approaches.
+
+3.1.3
+
+Functional Requirements
+
+Following the MoSCoW prioritisation method, the functional requirements are categorised as
+Must Have, Should Have, Could Have, and Won’t Have. This approach ensures clear focus
+on critical features while allowing for future expansion.
+
+CHAPTER 3. REQUIREMENTS AND ANALYSIS
+
+23
+
+Must Have Requirements
+Requirement
+Component
+Reusability
+
+Composability
+
+Declarative
+Structure
+
+Consistency
+
+SML / GTK Integration
+
+Description
+UI elements (buttons,
+forms, pages) must be
+self-contained and reusable
+across different pages.
+Complex UIs must be
+buildable by composing
+simpler components together.
+UI should be defined
+declaratively using SML’s
+function composition.
+Shared components and
+design tokens must be used
+for visual and behavioural
+consistency.
+A consistent pattern for defining
+page layouts and components must be established.
+Integration with GTK+
+must be handled via the
+Giraffe bindings with abstraction layers in place.
+
+Justification
+Component reusability allows for consistency and reduces development time.
+Composability helps manage complexity and allows
+for modular design.
+Declarative code is more
+maintainable and aligns
+with functional programming.
+Consistency improves user
+experience and simplifies
+updates.
+
+This ensures native UI
+support while keeping the
+functional model clean.
+
+Table 3.2: Must-Have Functional Requirements
+
+CHAPTER 3. REQUIREMENTS AND ANALYSIS
+
+24
+
+Should Have Requirements
+Requirement
+Maintainability
+
+State
+ment
+
+Manage-
+
+Design Token Implementation
+
+Component Documentation
+
+Navigation
+tem
+
+Sys-
+
+Description
+The codebase should follow
+a modular structure with
+clear separation of concerns and consistent coding
+conventions.
+Application state must be
+manageable and consistent
+across components and
+navigation.
+Design tokens should cover
+font sizes, colours, spacing,
+and support easy theme
+updates.
+Each reusable component
+should include clear API
+documentation and usage
+examples.
+A Gtk.Stack-based navigation system should support
+page transitions and parameter passing.
+
+Justification
+Maintainability
+ensures
+the library can be easily
+extended or modified over
+time.
+Proper state handling is
+critical for interactive and
+dynamic UI behaviour.
+Design tokens maintain visual consistency and simplify styling changes.
+Documentation improves
+usability and lowers the
+learning curve for developers.
+A structured navigation
+system supports typical
+ERP workflows involving
+multiple views.
+
+Table 3.3: Should-Have Functional Requirements
+
+CHAPTER 3. REQUIREMENTS AND ANALYSIS
+
+25
+
+Could Have Requirements
+Requirement
+Advanced
+UI
+Components
+
+Layout Flexibility
+
+Testing
+work
+
+Frame-
+
+Description
+Additional
+components
+such as data tables, charts,
+and ERP-specific forms
+could be included.
+Support for responsive layouts and adaptability to
+different screen sizes could
+be implemented.
+Unit tests and a testing
+framework could be developed for verifying component behaviour.
+
+Justification
+These features add value
+for end users but are not
+essential for initial deployment.
+Flexible layouts improve
+usability across various display environments.
+Testing helps ensure reliability and simplifies maintenance but can be added
+gradually.
+
+Table 3.4: Could-Have Functional Requirements
+Won’t Have Requirements
+Requirement
+Backend Integration
+
+Multi-Platform
+Support
+
+Description
+ERP-specific
+business
+logic, database connections, and authentication
+will not be included.
+Optimising for platforms
+beyond GTK (e.g., mobile,
+web) will not be prioritised.
+
+Justification
+These are beyond the scope
+of a UI library and vary by
+project.
+Initial focus is on desktop GTK apps; crossplatform support would increase complexity.
+
+Table 3.5: Won’t-Have Functional Requirements
+
+CHAPTER 3. REQUIREMENTS AND ANALYSIS
+
+3.1.4
+
+26
+
+Non-Functional Requirements
+Requirement
+Performance
+
+Description
+The library must render
+components responsively,
+with no noticeable delays
+and fast startup time.
+
+Reliability
+
+Components should handle
+errors gracefully and maintain consistent behaviour
+across interactions.
+Code should follow clear
+structure and be supported
+by adequate documentation.
+
+Maintainability
+
+Compatibility
+
+The library should work
+with Poly/ML 5.8+ and
+GTK+ 3.0 using Giraffe
+bindings.
+
+Justification
+UI actions should respond
+within 100ms and startup
+should complete within 2
+seconds, even with multiple components.
+Reliable components improve the user experience
+and reduce failure cases.
+Maintainable code makes
+it easier for new developers to contribute and for
+the system to evolve. Consistent coding and naming patterns must be used
+throughout the library.
+Compatibility ensures that
+the system builds and runs
+across supported environments.
+
+Table 3.6: Non-Functional Requirements
+
+Role
+Component
+veloper
+Application
+veloper
+
+DeDe-
+
+Maintenance Developer
+New Contributor
+
+User Story
+As a user, I want to create reusable UI widgets so that
+I can promote a consistent application design.
+As a user, I want to build ERP application pages using pre-built components so that development is faster
+and more consistent.
+As a user, I want to access clear component documentation and examples so that I can understand and
+extend components easily.
+As a user, I want to get started quickly by referencing
+setup guides and component usage examples to reduce
+onboarding time.
+
+Table 3.7: Key User Stories for ERP UI Library Development
+
+CHAPTER 3. REQUIREMENTS AND ANALYSIS
+
+3.2
+
+27
+
+Constraints and Limitations
+
+Several technical constraints impact the design and implementation of the ERP UI Library:
+• Functional Programming Paradigm: SML’s pure functional approach requires
+careful design to implement UI components that are traditionally built with objectoriented paradigms.
+• GTK+ Integration: Working through the Giraffe bindings introduces additional
+complexity when interfacing with the GTK+ toolkit.
+• Development Environment: Specialised knowledge of Poly/ML and Giraffe is required, limiting the potential contributor base.
+• Documentation Resources: Limited existing examples of complex UI applications
+in SML/GTK necessitates more original design work.
+
+3.3
+
+Testing and Quality Assurance Strategy
+
+To validate the stability and effectiveness of the ERP UI Library, a systematic manual testing
+strategy will be employed as part of the overall quality assurance process.
+
+3.4
+
+Risk Analysis
+
+This section lists down all the potential risks that this project might face. The risk register
+provided in Figure 3.3 is continuously updated throughout the project timeline as per the
+key to risk rating provided in Figure 3.2.
+
+Figure 3.2: Risk Rating Key
+
+CHAPTER 3. REQUIREMENTS AND ANALYSIS
+
+28
+
+Figure 3.3: Risk Register
+
+3.5
+
+Ethical, Professional and Legal Issues
+
+This project did not involve any real user data or personal information. All the data used
+during development and testing was randomly generated and only served to demonstrate how
+the system behaves. Because of this, there was no need for an ethics review.
+Since the focus of the work was on designing and implementing a UI library, there were
+no legal or privacy concerns. The project was developed in line with standard academic and
+professional practices, and care was taken to ensure that any testing or example data did not
+represent real individuals or organisations.
+
+Chapter 4
+
+Design
+4.1
+
+Introduction
+
+This chapter presents the architectural blueprint for the ERP UI Library, bridging the theoretical foundations established in previous chapters with the practical implementation that
+follows. It transforms the requirements and functional programming principles discussed in
+Chapters 2 and 3 into a coherent structural framework for a component-based UI library in
+Standard ML (SML). The chapter outlines the architectural patterns, component hierarchies,
+and state management approaches that leverage SML’s functional paradigm while addressing
+the unique challenges of ERP interface development.
+The design decisions documented here directly address the central research question posed
+in Chapter 1: ”How can functional programming principles be effectively applied to develop
+enterprise-grade UI libraries that improve Maintainability, Consistency, Type safety, and
+Developer Productivity compared to traditional imperative approaches?” Each section of
+this chapter explicitly connects design choices to these four dimensions, demonstrating how
+functional programming can enhance enterprise application development.
+These design elements collectively address the unique challenges of ERP interfaces identified in Chapter 2, particularly the need for consistency across complex workflows, type
+safety for business-critical operations, maintainable code for long-lived enterprise systems,
+and developer productivity in the face of complex domain requirements.
+It is important to note that the implementation presented in this dissertation represents
+a prototype of the ERP UI Library and should be considered a Minimum Viable Product
+(MVP). While the design and implementation demonstrate the core concepts and potential
+of functional programming in ERP UI development, a production-ready library would require
+further refinement, performance optimisation, and expanded component coverage beyond the
+scope of this research.
+
+29
+
+CHAPTER 4. DESIGN
+
+4.2
+
+30
+
+Development Environment
+
+Creating the ERP UI Library with Standard ML (SML) required a carefully structured
+technical environment that supports both functional programming principles and graphical
+interface development. We selected specific tools and frameworks to address the unique requirements of enterprise application development while maintaining functional programming
+integrity. This section details the key components of our development environment and explains how each contributes to the four dimensions of our research question.
+
+4.2.1
+
+Poly/ML
+
+Poly/ML 5.8.1 was chosen as the Standard ML implementation because it offers robust
+support for the SML standard, excellent performance characteristics, and a comprehensive
+runtime system.
+Poly/ML’s compiler optimisation capabilities were particularly valuable for ensuring the
+UI components maintained responsive performance even when implementing complex functional patterns.
+
+4.2.2
+
+Visual Studio Code
+
+Visual Studio Code served as the primary integrated development environment (IDE) for the
+project. The editor was configured with SML-specific extensions to support development of
+the ERP UI Library.
+The extensibility of VS Code allowed for a tailored development experience that significantly enhanced productivity despite the relatively limited tooling ecosystem typically
+available for SML development.
+
+4.2.3
+
+Giraffe Library
+
+The Giraffe Library formed the foundation of the ERP UI Library by providing SML bindings
+to GTK+. Giraffe was essential to this project for several reasons:
+• It generates typed SML interfaces for GTK+ components, ensuring type safety when
+interacting with the GUI toolkit
+• The library provides mechanisms for event handling that bridge between GTK’s imperative callback system and SML’s functional paradigm
+• Its GObject Introspection-based approach ensures compatibility with the evolving
+GTK+ ecosystem
+• The library includes utility functions for common operations such as signal connection
+and widget property manipulation
+
+CHAPTER 4. DESIGN
+
+31
+
+The giraffe-1.0.0-alpha.12.tar.gz version of Giraffe was used, providing access to GTK+
+3.24 features while maintaining compatibility with the SML module system. The project
+extended Giraffe’s capabilities by developing higher-level abstractions specifically designed
+for ERP interface patterns.
+
+4.2.4
+
+GTK+
+
+GTK+ 3.0 was selected as the underlying GUI toolkit for several reasons:
+• Comprehensive widget set suitable for data-intensive enterprise applications
+• Cross-platform capabilities, though the project primarily focused on desktop environments
+• Well-documented API with consistent design patterns
+• Theming capabilities that facilitate visual consistency across components
+The ERP UI Library leverages GTK+’s widget hierarchy while adding functional abstractions that simplify component composition and state management in alignment with SML
+programming patterns. These abstractions directly address the challenges of complex form
+handling and data-intensive interfaces typical in ERP systems, as identified in Chapter 2’s
+discussion of ERP UI challenges.
+
+4.2.5
+
+Command Line Interface (CLI)
+
+The command-line interface played a central role in the development workflow, serving multiple essential functions:
+• Executing Poly/ML commands for compiling and running the ERP UI Library
+• Managing build processes through custom shell scripts
+• Running automated tests for components and visual consistency
+• Generating documentation from structured comments in the source code
+• Installing and configuring dependencies including GTK+ development packages
+
+4.2.6
+
+Ubuntu Linux Operating System
+
+Ubuntu 22.04 LTS served as the primary development platform for the ERP UI Library.
+While the library was originally designed with cross-platform considerations in mind,
+Ubuntu provided the most consistent and well-supported environment for GTK+/Giraffe
+development.
+
+CHAPTER 4. DESIGN
+
+4.2.7
+
+32
+
+Git
+
+Version control was managed using Git, with a structured branching strategy designed to
+support the component-based nature of the library:
+• Main branch containing stable releases
+• Feature branches for individual components and subsystems
+• Documentation branch for maintaining comprehensive API documentation
+Git’s distributed nature supports both independent component development and coherent
+integration, while enabling systematic tracking of design evolution throughout the project
+lifecycle.
+
+4.3
+
+The ERP UI Library Structure
+
+Building on the development environment described above, this section presents the architectural design of the ERP UI Library itself. The architecture directly addresses the unique
+challenges of ERP interface development identified in Chapter 2. By applying functional programming principles to these challenges, we demonstrate how SML can enhance enterprise
+application development beyond what traditional imperative approaches achieve.
+The ERP UI Library represents a practical implementation of functional programming
+principles in user interface development. This section details the architectural organisation
+of the library, including its component hierarchy and interaction patterns.
+
+4.3.1
+
+Component Hierarchy
+
+The library adopts a modular, hierarchical structure that promotes separation of concerns,
+reusability, and maintainability ,key objectives identified in the research question. This component organisation directly addresses the ”long-term maintenance” challenge of ERP systems highlighted in Chapter 2. Figure 4.1 illustrates this component organisation.
+
+CHAPTER 4. DESIGN
+
+33
+
+Figure 4.1: ERP UI Library Component Hierarchy
+The component architecture employs a layered approach with five distinct categories, each
+addressing specific aspects of enterprise UI development:
+
+CHAPTER 4. DESIGN
+
+34
+
+Figure 4.2: High-level architecture of the The ERP UI library
+• Application Core: The foundational layer comprising main.sml as the entry point
+and AppState.sml managing shared application state. This layer initializes the GTK+
+application, establishes the navigation stack, and coordinates page transitions.
+• Pages: Self-contained modules representing distinct functional areas of the ERP system. Each page is implemented as an independent SML structure with a standardized
+interface:
+– LoginPage: User authentication interface
+– DashboardPage: Central monitoring and navigation hub
+– InventoryPage: Inventory management functionality
+– SalesOrderPage: Order processing interface
+– SettingsPage: Application configuration
+– BasePage: Abstract template defining common page structure
+• Layout Components: Reusable interface elements that provide structural consistency
+across pages:
+– Header and Footer: Standard frame elements for all pages
+– ButtonActionRow: Consistently styled action buttons
+– ErrorDialog: Standardised error notification
+
+CHAPTER 4. DESIGN
+
+35
+
+• Domain-Specific Components: Specialised widgets for particular functional areas,
+such as dashboard elements:
+– KPICard: Key Performance Indicator visualisation
+– ContentGrid: Dashboard layout manager
+– ContentPanel: Container for related information
+• Support Modules: Technical utilities that enable consistent styling and functionality:
+– Tokens: Design constants (colours, spacing, typography) ensuring visual consistency
+– Utils: Helper functions for common operations (table generation, image handling)
+– Data: Example data models and interfaces for component testing ie
+This hierarchical organisation implements the functional programming principle of composition, where complex interfaces are constructed by combining simpler, pure components.
+Each component is defined as an SML structure with a clear interface, promoting both
+reusability and maintainability.
+Implementation of Design Tokens
+A particularly notable feature of the library is its implementation of design tokens—a concept adapted from modern UI frameworks to enforce consistency in functional programming
+contexts. Design tokens represent atomic style values (like colours, typography, or spacing)
+as named constants. See Section 5.3.1 for implementation details.
+The implementation of design tokens directly supports the consistency dimension specified
+in the research question by programmatically enforcing standardised visual elements across
+the application.
+
+4.3.2
+
+User Flow
+
+The user interaction model of the ERP UI Library follows a single-window architecture
+with a page stack navigation pattern. This design directly addresses the ”consistency across
+modules” challenge identified in Chapter 2, providing users with a predictable navigation
+experience that reduces cognitive load when moving between different ERP functional areas.
+4.3.
+
+CHAPTER 4. DESIGN
+
+36
+
+Figure 4.3: User Flow Through the ERP UI Library
+The navigation flow progresses through several key states:
+1. Authentication: Users begin at the LoginPage, which validates credentials and manages authentication state through the functional state management pattern.
+2. Main Navigation: Upon successful authentication, users are directed to the
+DashboardPage, which serves as the central hub with:
+• KPI visualisations showing business metrics
+• Navigation elements to access functional modules
+• Recent activity summaries
+3. Functional Modules: From the dashboard, users can navigate to specialised ERP
+modules:
+• InventoryPage for stock management
+• SalesOrderPage for order processing
+• SettingsPage for system configuration
+4. Module Workflows: Each module page implements domain-specific workflows with
+appropriate state management, data validation, and interaction patterns.
+
+CHAPTER 4. DESIGN
+
+37
+
+5. Session Management: Users can return to the dashboard or log out, clearing application state.
+GTK’s Stack widget is used in the implementation to manage these transitions while a
+single application window is maintained.
+This navigation architecture demonstrates how functional programming can effectively
+model stateful UI transitions while maintaining code clarity and predictability.
+Component Communication
+One of the challenges addressed in the library design was enabling component communication
+within a functional paradigm. The solution implements a variant of the observer pattern using
+SML’s module system and first-class functions.
+This approach demonstrates how functional programming patterns can manage complex
+UI interactions while maintaining code clarity and strong coupling control.
+
+4.3.3
+
+Addressing ERP-Specific Challenges
+
+The design of the ERP UI Library explicitly addresses the unique challenges of enterprise UI
+development identified in Chapter 2:
+• Configurability Requirements: The design token system and modular component
+architecture enable configuration without modifying core functionality, addressing the
+high customisation needs identified in ERP deployments.
+• Long-term Maintenance: The strong typing, explicit component interfaces, and
+functional purity reduce hidden dependencies and side effects, making the system more
+maintainable over the extended lifecycle typical of enterprise applications.
+• Consistency Across Modules: The shared component library and design token system ensure visual and behavioural consistency across different functional areas, reducing
+training requirements and operational friction.
+These design approaches demonstrate how functional programming principles offer specific advantages for addressing enterprise UI challenges compared to traditional imperative
+approaches.
+
+4.4
+
+Wireframes
+
+The following wireframes illustrate early design concepts used to explore the features intended
+for implementation in the ERP UI Library (see Chapter 5 for their implementation code).
+
+CHAPTER 4. DESIGN
+
+4.4.1
+
+38
+
+Base Page Wireframe
+
+Figure 4.4: Base page wireframe
+
+4.4.2
+
+Login Page Wireframe
+
+Figure 4.5: Login page wireframe
+
+CHAPTER 4. DESIGN
+
+4.4.3
+
+39
+
+Dashboard Wireframe
+
+Figure 4.6: Dashboard wireframe
+
+4.4.4
+
+Inventory Page Wireframe
+
+Figure 4.7: Inventory page wireframe
+
+CHAPTER 4. DESIGN
+
+4.4.5
+
+40
+
+Sales Order Page Wireframe
+
+Figure 4.8: Sales order page wireframe
+
+4.5
+
+Ethical Considerations
+
+This project did not involve human participants, sensitive data, or other activities requiring
+formal ethical approval. As a result, ethics approval from the university’s ethics committee
+was not necessary. Nonetheless, ethical standards concerning academic integrity, proper
+sourcing of materials, and responsible software development practices were carefully observed
+throughout the project.
+
+Chapter 5
+
+Implementation and Testing
+This chapter presents the ERP UI implementation using Standard ML and Giraffe, based on
+the architecture defined in Chapter 4. It applies functional programming principles to address
+ERP-specific challenges, emphasizing maintainability and consistency through immutability,
+type safety, and composition.
+
+5.1
+
+From Architecture to Implementation
+
+This section details how the architectural design from Chapter 4 was realized in code, highlighting key implementation decisions and the rationale behind them.
+Architectural Decision (Ch. 4)
+Component hierarchy
+with tokens, layout, and
+dashboard elements
+Design token system for
+visual consistency
+Explicit state management using immutable
+data structures
+Component composition using functors
+Event handling via
+higher-order functions
+
+Implementation
+Approach
+Implemented as separate SML
+modules with clear dependencies
+Implemented using reference
+cells to balance immutability
+with global updates
+Implemented through the
+AppState module with pure
+update functions
+Implemented BasePage as a
+functor that generates specialized page components
+Implemented using SML’s
+first-class functions and Giraffe’s signal connections
+
+Resulting Code Structure
+Hierarchical file structure with tokens implemented first, followed by
+layout and dashboard components
+FontSize.sml and SpacingScale.sml
+modules using SML’s ref type
+AppState.sml with update functions
+that return new state rather than
+modifying existing state
+Pages directory with multiple implementations using the BasePage
+functor
+Event handlers that receive state
+update functions as parameters
+
+Table 5.1: Mapping of Architectural Decisions to Implementation
+
+41
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+42
+
+Implementing the architectural design described in Chapter 4 required a systematic
+iterative approach that applied functional programming principles to ERP UI development. This methodology accommodates the unique challenges of functional UI development
+[Czaplicki, 2012] while addressing the specific ERP interface requirements identified in Chapter 3.
+The implementation began with foundational token systems (FontSize.sml, SpacingScale.sml ), which directly addressed consistency requirements (NF1) by providing a standardized visual framework [Dusted, 2024]. Development progressed to core layout components (Header.sml, Footer.sml ), which demonstrated SML’s pattern matching and option
+types for conditional rendering. The library then incorporated multi-page navigation and
+interactive dashboard components, leveraging higher-order functions and immutable data
+structures for state management [Redux Team, 2024].
+Each iteration balanced the key objectives established in Chapter 1: improving maintainability, ensuring consistency, leveraging type safety, and enhancing developer productivity.
+The component-based architecture facilitated identification and correction of design inconsistencies, demonstrating the practical benefits of functional programming for UI development
+[Yang, 2024].
+ERP-specific challenges including multi-page navigation and data visualization were addressed through architectural implementations like reusable layout components and interactive tables. The final iterations focused on settings management and codebase optimization,
+creating a flexible system that fulfills the non-functional requirements established in Chapter
+3.
+Table 5.2 summarizes the iterative development process of the ERP UI Library, illustrating how functional programming principles addressed increasingly complex ERP interface
+requirements. This approach allowed for continuous refinement of functional patterns while
+aligning with the architectural components outlined in Chapter 4.
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+43
+
+Table 5.2: Summary of The ERP UI Library Development Iterations
+Iteration Description
+Key Changes
+Outcome
+v1
+Initial project Algorithm
+implementations; Established
+foundasetup
+minimal viable library
+tional code structure
+v2
+Core UI li- Font size standards; spacing to- Design system foundabrary
+kens; basic GUI window
+tions and UI components
+v3
+Login
+page Login
+implementation; Entry point with consisand layout
+header/footer components
+tent layout elements
+v4
+Multi-page
+Base page integration; naviga- Core architecture for
+structure
+tion menu bar
+multiple views
+v5
+Dashboard de- Data visualization; scrollable Comprehensive
+dashvelopment
+tables; KPI displays
+board capabilities
+v6
+Inventory
+Modals; CRUD operations; im- Complete
+inventory
+management
+age handling
+management module
+v7
+Authentication User authentication; data file Enhanced security and
+structure
+data organization
+v8
+Settings and User profile; improved UI inter- Completed
+settings
+refinements
+actions
+functionality
+v9
+Documentation Repository
+documentation; Deliverable with comcode cleanup
+prehensive docs
+This observation validates the architectural decisions outlined in Chapter 4.
+
+5.2
+
+Component Interaction Flow
+
+Figure 5.1: Component interaction flow where user interactions with GTK widgets trigger
+event handlers, which invoke pure functions to compute new state, ultimately updating the
+UI via GTK functions
+
+5.3
+
+Core Component Implementation
+
+This section examines key components in the ERP UI Library, focusing on how Standard
+ML’s functional features address ERP interface development challenges identified in Chapter
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+44
+
+3.
+
+5.3.1
+
+Design Tokens
+
+Design tokens form the foundation of the ERP UI Library’s design system, providing a
+centralized approach to manage visual attributes and ensuring consistency throughout the
+application.
+Font Size Hierarchy
+
+Figure 5.2: Font size hierarchy implementation establishing a coherent typographic system
+that enhances information structure in data-dense ERP interfaces
+Usage Patterns
+
+Figure 5.3: Font application pattern encapsulating both sizing and text setting in a single
+function call, reducing boilerplate and ensuring consistency
+Spacing Scale
+The spacing system uses a modular scale with both numeric values (xxsmall through xlarge)
+and semantic aliases that describe their intended use:
+• Scale Values: xxsmall (4px), xsmall (8px), small (12px), medium (16px), large (24px),
+xlarge (32px)
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+45
+
+• Semantic Aliases: inline (8px) for horizontal spacing, stack (12px) for vertical spacing, inset (16px) for padding, section (24px) for major divisions
+Usage Patterns
+
+Figure 5.4: Basic application of spacing values to GTK containers ensuring visual consistency
+across complex interfaces
+
+Figure 5.5: Custom spacing using the get function for flexible access to the spacing scale
+The custom spacing pattern demonstrates extending the spacing system beyond predefined constants for specialized layouts. The get function derives mathematically related
+spacing values beyond named constants. This is valuable for ERP interfaces with specific
+layout needs like data tables or custom visualizations. This functional approach maintains
+visual harmony by ensuring custom values remain mathematically related to the standard
+spacing system.
+CSS Loader
+The application of CSS styles to GTK widgets is handled by the CssLoader module, enabling
+consistent visual theming across the ERP UI application. A functional interface to GTK’s
+style system is provided, bridging the gap between CSS and Standard ML.
+
+Figure 5.6: CSS Loader implementation example
+The CSS Loader bridges Standard ML’s functional paradigm with CSS’s declarative
+styling, valuable for consistently styling numerous ERP application components. By func-
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+46
+
+tionally wrapping GTK’s styling, it manages side effects within a functional codebase. This
+offers developers maintainability and predictability alongside CSS’s expressive styling. The
+loader exemplifies the adapter pattern by providing a functional interface for an imperative
+API. Key components include class application, CSS loading utilities, and functional error
+handling for CSS loading.
+Core Functionality
+Two primary functions are provided by the module:
+1. loadStyles: Loads a CSS stylesheet globally for the application
+• Function signature: loadStyles:
+
+string → unit
+
+• Loads CSS from the specified path and applies it to the application
+• Handles errors gracefully using functional error handling
+2. addClassToWidget: Applies a CSS class to a specific widget
+• Function signature: addClassToWidget:
+
+’a Widget.class → string → unit
+
+• Applies the named CSS class to the specified widget
+• Works with any widget that inherits from GTK’s Widget class
+Usage Patterns
+
+Figure 5.7: Global stylesheet application ensuring consistent styling across the application
+while encapsulating side effects
+
+Figure 5.8: Component-specific styling enabling modular style composition similar to functional composition of data transformations
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+47
+
+Benefits and Implementation
+The token-based design system provides five key benefits: consistency across UI elements,
+maintainability through centralized changes, scalability with new token types, abstraction of
+styling details, and functional purity through immutability.
+Immutable References: Values are stored as ref types, preserving the ability to update
+them system-wide while maintaining local immutability. For example, in FontSize.sml:
+
+Figure 5.9: Immutable references in token system code example
+The immutable reference pattern shown in Figure 5.9 represents a key architectural decision in the token system’s implementation. By storing design values as references, the
+system balances the functional programming ideal of immutability with the practical need
+for system-wide value adjustment.
+Pure Functions: Side effects are not produced by token operations, which focus only
+on their input-output relationships. For example, in FontSize.sml:
+
+Figure 5.10: Pure functions in token system code example
+Higher-Order Functions: Widgets and functions are taken as parameters by token
+application functions. For example, in CssLoader.sml:
+
+Figure 5.11: Higher-order functions in token system code example
+Composition: More complex styles can be created through functional composition when
+tokens are combined. For example, in SpacingScale.sml:
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+48
+
+Figure 5.12: Token composition code example
+Combining Tokens
+The real power of the token system is revealed when multiple token systems are combined to
+create cohesive UI components. A complete example of a styled KPI card component using
+all three token systems is shown below:
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+49
+
+Figure 5.13: Complete KPI card component using combined tokens
+This example demonstrates:
+1. Consistent Spacing:
+Using SpacingScale.small for vertical spacing and
+SpacingScale.inset for padding
+2. Typography Hierarchy: Using FontSize.h2 for the value, FontSize.h5 for the
+label, and FontSize.caption for the trend
+3. Visual Styling: Using CSS classes (kpi-card, kpi-label, etc.) for colors, backgrounds, and borders
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+50
+
+4. Functional Pattern: Using a pure function that takes parameters and returns a styled
+widget
+
+5.3.2
+
+Layout Components
+
+Layout components provide the structural foundation of the ERP UI Library, defining the
+application’s overall structure (headers, footers, navigation, dialogs) for consistent content
+organization and user experience. Implemented with functional programming principles,
+these components ensure clean separation of concerns, avoid mutable state, and facilitate
+easy composition, differing from object-oriented UI frameworks.
+Header Component
+The Header component creates a consistent application header with support for branding,
+navigation, and user information.
+
+Figure 5.14: Header component implementation
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+51
+
+Footer Component
+
+Figure 5.15: Footer component implementation providing consistent copyright information
+and auxiliary content
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+52
+
+Button Positioning Components
+
+Figure 5.16: Button positioning components providing standard alignment patterns (left,
+right, centered) that ensure visual consistency across the application
+Error Dialog
+The ErrorDialog component provides a standardized way to display error messages to users.
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+53
+
+Figure 5.17: Error dialog implementation
+The Error Dialog component in Figure 5.17 provides a consistent approach to error handling in the user interface. This implementation addresses one of the key challenges in ERP
+systems: providing clear and actionable feedback when errors occur. By encapsulating the
+dialog creation, display, and cleanup in a single function, the component ensures that error
+handling follows a consistent pattern throughout the application. The functional approach
+makes error display a declarative process, where developers specify what should be displayed
+rather than how to create, show, and destroy dialog widgets.
+
+Figure 5.18: Error dialog usage example
+Key Features:
+• Consistent Error Presentation: Standardized visual design for all error messages
+• Modal Interaction: Interrupts workflow appropriately for critical errors
+• Customizable Content: Support for different error titles and descriptions
+Button Position Row
+The Button Position Row consists of three distinct components—LeftAlignedButtonRow,
+RightAlignedButtonRow, and CenterAlignedButtonRow—which provide layout utilities for
+consistent button placement with different alignment options.
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+54
+
+Figure 5.19: Button position row implementation showing the three alignment components
+The Button Position Row components (Figure 5.19) address consistent button alignment
+in ERP layouts. Using three variants—LeftAlignedButtonRow, RightAlignedButtonRow,
+and CenterAlignedButtonRow—they support diverse UI needs while maintaining platform
+consistency. Each follows a shared functional pattern, leveraging list operations to handle
+variable button counts, showcasing functional programming’s strength in UI composition.
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+55
+
+Figure 5.20: Button row usage examples showing alignment patterns
+Application State
+
+Figure 5.21: Application state management implementation
+The Application State module shown in Figure 5.21 demonstrates a functional approach
+to managing authentication state, balancing functional purity with practical state tracking
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+56
+
+needs. By encapsulating state in a dedicated module with controlled mutation through
+explicit functions, the implementation provides type safety while containing necessary state
+changes.
+
+Figure 5.22: Application state usage for authentication status and session management
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+57
+
+Menu Navigation System
+
+Figure 5.23: Menu navigation system implementation using higher-order functions for event
+handling
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+58
+
+Figure 5.24: Menu navigation usage showing flexibility for different page contexts through
+pattern matching
+
+5.3.3
+
+Dashboard Components
+
+Dashboard components enable the creation of data visualization interfaces for ERP applications, presenting business metrics and KPIs in a clear, consistent manner.
+KPI Card Component
+
+Figure 5.25: KPI card usage examples showing how the component displays metrics with
+optional trend indicators using pattern matching
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+59
+
+Content Panel
+
+Figure 5.26: Content panel implementation demonstrating flexible content containers with
+pattern matching for optional parameters
+Implementation Example: Creating a KPI Dashboard
+
+Figure 5.27: Dashboard page demonstrating component composition to create informationrich interfaces with consistent visual styling
+
+5.3.4
+
+Utilities
+
+Utility functions provide helper operations for common ERP interface tasks, abstracting
+repetitive code patterns and ensuring consistency.
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+60
+
+Table Utilities
+
+Figure 5.28: Table utilities implementation demonstrating functional approaches to creating
+data tables with higher-order functions
+The TableUtils module exemplifies key functional programming principles by using higherorder functions (such as appi for indexed iteration), maintaining pure function implementations for predictable behavior, and clearly separating concerns between table structure and
+data population. This design enhances modularity and reusability in the rendering of complex
+ERP tables.
+Image Utilities
+
+Figure 5.29: Image utilities implementation showing functional approach to error handling
+with option types
+The ImageUtils module provides the scaledImageFromFile function that loads and scales
+images, demonstrating functional error handling techniques through option types and pattern
+matching. This approach ensures that UI components remain robust even when images
+cannot be loaded, which is crucial for enterprise applications.
+
+5.3.5
+
+Pages
+
+The Pages module provides a structured framework for constructing ERP application screens
+in Standard ML, leveraging functional programming principles. It simplifies development
+through reusable templates and a flexible composition system, promoting both consistency
+and customizability. The module addresses key ERP interface challenges by supporting the
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+61
+
+BasePage pattern, offering common business templates, and enabling seamless integration of
+UI components.
+Creating Pages: The BasePage Pattern
+
+Figure 5.30: Standard page structure showing the consistent layout applied across all application screens
+BasePage Creation Process:
+
+Figure 5.31: Step 1: Define the page using the BasePage functor
+
+Figure 5.32: Step 2: Create the page instance and get content container
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+62
+
+Figure 5.33: Step 3: Add custom content to the page
+This three-step process leverages SML’s functor system to create a powerful abstraction that balances consistency with flexibility. The BasePage pattern automatically includes
+header, navigation, content area, and footer elements, allowing developers to focus only on
+page-specific content.
+Page Templates
+
+Figure 5.34: BasePage functor implementation with PAGE signature ensuring consistent
+interfaces across all pages
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+63
+
+Figure 5.35: Example application of the BasePage functor showing composition-based page
+creation
+The library provides several pre-built page templates as starting points for ERP applications.
+The PAGE signature ensures that all pages implement a consistent interface, making them
+interchangeable in the navigation system. This type-driven approach enforces correctness at
+compile time rather than runtime, while the composition pattern allows for code reuse and
+flexibility.
+Navigation in BasePage
+The BasePage functor handles navigation between pages using menu items and the GTK
+Stack widget see . This approach creates a declarative navigation system that is both flexible
+and maintainable.
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+64
+
+Figure 5.36: Menu bar creation with functional event handling
+The menu bar implementation (Figure 5.36) uses higher-order functions to handle navigation, separating UI components from navigation logic. Each button is linked to a function
+that updates the visible page in the stack, exemplifying functional
+LoginPage: Authentication Template
+The LoginPage provides authentication functionality with username and password fields,
+validation, and error handling.
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+65
+
+Figure 5.37: Login page implementation structure
+The LoginPage implementation (Figure 5.37) is constructed using the BasePage functor with a “Login” title, demonstrating a clear separation between UI and authentication
+logic. The authenticate function employs list operations and higher-order functions to verify credentials, illustrating functional programming’s applicability to secure authentication
+workflows. This pattern offers a robust and expressive approach suited to ERP systems where
+authentication is critical.
+
+Figure 5.38: Login form with validation and error handling
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+66
+
+DashboardPage: Data Visualization Template
+The DashboardPage displays key performance indicators in a grid layout for business metrics
+visualization.
+
+Figure 5.39: Dashboard page with KPI cards in a grid layout
+Figure 5.39 shows how KPI cards are created and arranged in a grid layout for the
+dashboard page. Each KPI card is created using the reusable KPICard component, demonstrating component composition. The grid layout provides a structured way to organize
+visual elements, with each card displaying different business metrics. This approach showcases functional programming’s emphasis on building complex interfaces from simple, reusable
+components. For ERP dashboards where clear data visualization is essential, this pattern
+provides an elegant solution for presenting business metrics.
+
+Figure 5.40: Dashboard navigation to other application pages
+Figure 5.40 illustrates how navigation buttons are implemented on the dashboard page.
+The implementation uses the LeftAlignedButtonRow component for consistent button placement and connects each button to a navigation function. This approach demonstrates functional event handling, with each button click mapped to a function that changes the visible
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+67
+
+page. For ERP applications with multiple modules, this pattern provides a clear navigation
+structure that helps users move between different functional areas.
+InventoryPage: Data Management Template
+The InventoryPage provides a complete data management interface with a dynamic table
+for inventory items.
+
+Figure 5.41: Inventory page structure with BasePage application
+Figure 5.41 demonstrates how the InventoryPage is structured using the BasePage functor. The page follows the same pattern as other pages, applying the BasePage functor with
+the title ”Inventory” and then adding page-specific content to the content container. This
+consistency across page implementations makes the codebase more maintainable and easier to
+understand. For ERP development teams, this pattern provides a clear template for creating
+data management interfaces with consistent navigation and layout.
+
+Figure 5.42: Functional table refresh implementation
+Figure 5.42 shows how the inventory table is refreshed when data changes. Instead of
+modifying the existing table, the implementation takes a functional approach by completely
+replacing the table with a new one containing the updated data. This approach aligns with
+functional programming’s emphasis on immutability, treating UI components as values that
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+68
+
+are replaced rather than modified. For data-intensive applications, this pattern provides a
+clear model for state updates that avoids the complexity of tracking incremental changes.
+
+Figure 5.43: Removing selected inventory items with pattern matching
+Figure 5.43 demonstrates how item removal is implemented with pattern matching for
+handling the presence or absence of a selection. This approach creates robust error handling
+by explicitly considering all possible states. The implementation uses the TableUtils component to abstract the details of table manipulation, demonstrating the benefits of componentbased design. For data management interfaces, this pattern provides a clean implementation
+of common operations while handling edge cases gracefully.
+SalesOrderPage: Order Management Template
+The SalesOrderPage provides functionality for viewing and managing customer orders.
+
+Figure 5.44: Sales order page structure with BasePage application
+Figure 5.44 shows how the SalesOrderPage is structured using the BasePage functor. The
+implementation follows the PAGE signature, ensuring consistency with other pages in the
+application. This approach demonstrates how interfaces (signatures in SML) can be used to
+ensure consistent behavior across different implementations. For ERP modules that need to
+conform to a standard navigation pattern, this approach provides a type-safe way to ensure
+consistency.
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+69
+
+Figure 5.45: Sales order table creation with functional list processing
+Figure 5.45 illustrates how the sales order table is created using functional list processing.
+The implementation uses List.app to apply a function to each header text, creating a consistent header row. This functional approach to UI generation demonstrates how list operations
+can be used to create UI elements from data collections. For tables with dynamic columns
+or rows, this pattern provides a concise way to generate UI elements from data structures.
+
+Figure 5.46: Navigation back to the dashboard from the sales order page
+
+CHAPTER 5. IMPLEMENTATION AND TESTING
+
+70
+
+Figure 5.46 demonstrates how navigation is implemented from the SalesOrderPage back
+to the dashboard. The implementation uses the LeftAlignedButtonRow component for consistent button placement and connects the button to a navigation function. This approach
+shows how consistent navigation patterns can be implemented across different pages. For
+ERP workflows that span multiple screens, this pattern provides a consistent way for users
+to navigate between related functions.
+Customizing Page Templates
+The library supports template customization through component replacement, content adaptation, and behavioural extension. Rather than altering core functionality, developers can
+define wrapper structures that compose over the base implementation. This approach aligns
+with functional programming principles, particularly composition over modification, treating the original template as an immutable foundation. Such a pattern is especially valuable
+in ERP systems, where interfaces often require tailored adaptations across departments or
+clients without duplicating code or compromising maintainability.
+
+5.4
+
+Summary
+
+This chapter detailed the implementation of the ERP UI Library, showing how functional
+programming enables a robust and maintainable framework for enterprise applications. The
+solution addresses the requirements from Chapter 3 through five core components: a design
+token system, layout components, dashboard elements, standardized page templates, and
+utility functions.
+Six functional programming principles guided the implementation ,immutability, higherorder functions, pattern matching, composition via functors, strong typing, and controlled
+state management, resulting in consistent interfaces, improved code quality, and reduced
+defects, they .
+The next chapter evaluates this implementation against the project’s original goals, assessing the practical effectiveness of functional programming in ERP UI development.
+
+Chapter 6
+
+Results and Discussion
+This chapter evaluates the ERP UI Library implementation against the requirements established in Chapter 3, examining how effectively functional programming principles address
+enterprise UI development challenges. The results demonstrate how the library realizes the
+theoretical foundations through practical implementation, offering insights into functional
+programming’s viability for ERP interface development.
+
+6.1
+
+Revisiting Requirements
+
+The ERP UI Library was developed to address specific challenges in enterprise UI development through functional programming principles, with requirements categorized using the
+MoSCoW framework. This section evaluates how successfully the implementation meets these
+requirements.
+
+6.1.1
+
+Functional Requirements Evaluation
+
+Table 6.1 evaluates the library’s performance against the must-have requirements, demonstrating how the core functionality has been implemented.
+
+71
+
+CHAPTER 6. RESULTS AND DISCUSSION
+ID
+F1
+
+Requirement
+Component-based
+tecture
+
+F2
+
+Design token system
+
+F3
+
+Core layout components
+
+F4
+
+State management
+
+F5
+
+Event handling
+
+F6
+
+Form components
+
+archi-
+
+72
+
+Implementation Results
+Successfully implemented through reusable UI
+components that encapsulate both presentation
+and behavior. Components like KPICard, ContentPanel, and DataGrid demonstrate the library’s component-based approach.
+Implemented a comprehensive token system including FontSize, SpacingScale, and CSS class
+utilities. The system enables consistent visual
+styling across the application.
+Implemented Header, Footer, and layout grid
+components that provide consistent application
+structure. The BasePage pattern ensures standardized layout across different screens.
+Successfully implemented through controlled
+references, balancing functional purity with
+practical state management needs.
+Implemented through higher-order functions
+that encapsulate event logic while maintaining
+functional programming principles.
+Created form components with validation support, demonstrated in the LoginPage implementation.
+
+Table 6.1: Must-Have Requirements Implementation Results
+The should-have and could-have requirements were also largely met, with Table 6.2 summarizing these achievements.
+
+CHAPTER 6. RESULTS AND DISCUSSION
+ID
+F7
+
+Requirement
+Dashboard components
+
+F8
+
+Table components
+
+F9
+
+Navigation system
+
+F10
+
+Theming support
+
+F11
+
+Documentation
+
+73
+
+Implementation Results
+Successfully implemented KPI cards and data
+visualization components that enable effective
+business metrics display.
+Implemented through the TableUtils module
+which provides standardized, sortable, and filterable data tables for ERP applications.
+Created a consistent navigation pattern using
+the BasePage functor and menu system, allowing for standardized application navigation.
+Partially implemented with foundational CSS
+class management and token references designed
+for theme switching. Full theme switching shall
+be a future development.
+Implemented comprehensive code documentation and created a library website with documentation, examples, and API references.
+
+Table 6.2: Should-Have and Could-Have Requirements Implementation Results
+
+6.1.2
+
+Non-Functional Requirements Evaluation
+
+The ERP UI Library was also evaluated against the non-functional requirements established
+in Chapter 3, with Table 6.3 summarizing these findings.
+
+CHAPTER 6. RESULTS AND DISCUSSION
+ID
+NF1
+
+Requirement
+Visual consistency
+
+NF2
+
+Maintainability
+
+NF3
+
+Performance
+
+NF4
+
+Type safety
+
+NF5
+
+Testability
+
+74
+
+Implementation Results
+The design token system and consistent component patterns ensure visual harmony across the
+application. Manual testing confirmed that all
+screens maintain consistent visual appearance,
+typography, and spacing as intended.
+The functional approach with immutable data
+structures, pure functions, and component composition results in code that is easier to maintain.
+The library demonstrates sufficient performance
+for enterprise applications.
+SML’s strong type system prevents numerous
+categories of runtime errors, with compile-time
+checking catching potential issues early in the
+development process, as evidenced in Section
+5.7.4.
+The pure functional components exhibit high
+testability, primarily due to their deterministic
+behavior, although testing was conducted manually in this instance.
+
+Table 6.3: Non-Functional Requirements Implementation Results
+
+6.2
+
+Component Testing Results
+
+The ERP UI Library components were tested against their requirements to verify their functional correctness and adherence to functional programming principles. The testing process
+for key components is documented below with representative screenshots.
+
+CHAPTER 6. RESULTS AND DISCUSSION
+Component
+Category
+Design
+Token
+System
+
+Testing Focus
+
+Layout Components
+Dashboard Components
+
+Application structure consistency
+Business metrics visualization
+
+Data Tables
+
+Data presentation and manipulation
+Application section movement
+
+Navigation System
+Form
+Components
+Integration Testing
+
+Visual consistency and propagation of styling changes
+
+User input and validation
+
+Component interaction
+
+75
+Key Functional Benefits Observed
+Proper management of shared
+styling state while maintaining
+immutability principles
+Reusable templates via functors
+with customizable content areas
+Component composition enabling
+flexible configurations with consistent styling
+Higher-order functions creating
+clean data transformations
+First-class functions maintaining
+type safety in event handling
+Pattern matching for elegant error
+handling and input state management
+Predictable behavior in complex UI
+scenarios due to immutability
+
+Table 6.4: Component Testing Summary
+
+6.2.1
+
+Screenshots of the ERP system in Use
+
+Figure 6.1: ERP System Login page with username and password fields
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+Figure 6.2: Login error dialog showing invalid username or password message
+
+Figure 6.3: ERP System Dashboard navigation bar with menu options
+
+Figure 6.4: Dashboard interface with Sales Order button
+
+76
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+Figure 6.5: Sales KPI overview showing Today’s Sales, Open Orders, and other metrics
+
+77
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+Figure 6.6: Example of a Control Panel with an image inserted
+
+78
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+79
+
+Figure 6.7: Table table A: Inventory management using a purpose-built static table structure for product items with predefined columns for quantity and pricing, contrasting with
+dynamically rendered tables elsewhere in the system
+
+Figure 6.8: Table type B: Dynamically rendered table using a data file (Sales Orders table
+showing customer orders with status and totals)
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+80
+
+Figure 6.9: Dashboard overview with KPIs and product sales chart
+
+Figure 6.10: Add Inventory Item dialog with input fields for product details(button highlighted)
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+Figure 6.11: Inventory modal pop up for adding new items
+
+Figure 6.12: Updated inventory list showing newly added Gadget D product
+
+81
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+82
+
+Figure 6.13: Error dialog pop up
+
+6.2.2
+
+Functional Programming Benefits
+
+The implementation demonstrates several concrete benefits of applying functional programming principles to ERP UI development:
+• Immutability and Predictability: The immutable data structures and pure functions result in UI behavior that is more predictable and easier to reason about. State
+changes are explicit and traceable, reducing the occurrence of unexpected side effects
+commonly found in imperative UI implementations.
+• Composition over Inheritance: The library’s compositional approach allows complex components to be built from simpler ones, creating a flexible system that can adapt
+to diverse ERP interface requirements without the complexity often found in deeply
+nested inheritance hierarchies.
+• Type Safety: SML’s strong type system catches many potential errors at compile
+time rather than runtime, leading to more robust applications. The explicit handling
+of optional values through pattern matching creates more resilient code that elegantly
+handles edge cases.
+• Separation of Concerns: The functional approach naturally separates UI structure
+from behavior, with higher-order functions enabling clear encapsulation of event handling logic and business rules.
+
+6.2.3
+
+Library Documentation
+
+To ensure the ERP UI Library is accessible and usable for developers, comprehensive documentation was created using the Sphinx documentation system. The documentation includes:
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+83
+
+• Architecture: System architecture, component interaction flow, and design patterns
+• Token System: Design tokens for consistent visual styling and theming
+• Layout Components: Header, footer, and other reusable UI components
+• Pages: Detailed documentation of application page patterns and implementations
+• Dashboard Components: Components specific to dashboard interfaces
+• Utilities: Helper functions for tables, images, and other common tasks
+• Installation: Setup and installation instructions
+• Usage Examples: Code examples demonstrating component usage patterns
+The documentation is written in reStructuredText (RST) format and built using Sphinx
+to generate comprehensive HTML documentation. Figure 6.14 shows the documentation
+interface.
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+84
+
+Figure 6.14: ERP UI Library Sphinx Documentation showing component framework references and examples
+To build and access the documentation:
+1. Set up a Python virtual environment with python3 -m venv venv
+2. Activate the environment with source venv/bin/activate (Linux/Mac) or venv
+Scripts
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+85
+
+activate (Windows)
+3. Install required dependencies with python -m pip install -r requirements.txt
+4. Build the documentation with cd docs and sphinx-build -b html .
+
+build/html
+
+5. Open the generated HTML files in a web browser using the appropriate command for
+your operating system
+The documentation approach follows functional programming principles by providing pure
+examples that demonstrate complete component usage without side effects or external dependencies. Each component is documented with its type signature, parameter descriptions,
+usage examples, and visual demonstrations.
+
+6.3
+
+Discussion & Goals Achieved
+
+The implementation of the ERP UI Library demonstrates that functional programming principles can be effectively applied to enterprise UI development, addressing the research question posed in Chapter 1. The library successfully balances theoretical functional programming
+ideals with practical requirements of enterprise applications.
+
+6.3.1
+
+Addressing ERP UI Development Challenges
+
+The library effectively addresses the four key challenges identified in Chapter 1:
+1. Maintainability: The functional approach with immutable data structures and pure
+functions creates UI code that is easier to maintain over time. The clear data flow
+and explicit state management reduce the complexity of tracking application behavior,
+addressing a critical challenge in long-lived enterprise systems.
+2. Consistency: The design token system and compositional component architecture
+ensure visual and behavioral consistency across the application. This consistency addresses the challenge highlighted by Dusted (2024) regarding the importance of interface
+harmony in enterprise applications.
+3. Type Safety: SML’s strong type system provides compile-time guarantees that prevent
+many common runtime errors. The library’s signatures and interfaces ensure components are used correctly, addressing the reliability requirements critical to enterprise
+systems.
+4. Developer Productivity: Despite the learning curve associated with functional programming, the library’s component-based architecture and clear patterns enable productive development once mastered. The compositional approach allows rapid assembly
+of complex interfaces from well-tested components.
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+6.3.2
+
+86
+
+Developer Experience Impact
+
+The functional approach to ERP UI development significantly alters the developer experience
+compared to traditional imperative approaches. This section examines the specific impacts
+on various aspects of the development process.
+Development Aspect
+Code organization
+
+Debugging
+ence
+
+experi-
+
+Learning curve
+
+State management
+Component reuse
+
+Onboarding new developers
+
+Traditional Imperative Approach
+Class hierarchies with inheritance relationships; state spread
+across components
+Requires tracking state changes
+across components; mutationbased bugs common
+Familiar to most developers;
+matches mental model of direct
+manipulation
+Imperative state updates spread
+throughout components
+Inheritance and extension patterns; shared state can create
+coupling
+Quick initial productivity but
+technical debt accumulates; easier to make quick changes that
+break other parts
+
+Functional Approach (ERP
+UI Library)
+Module-based composition with
+explicit dependencies; centralized state management
+Easier to trace data flow; pure
+functions allow isolated debugging; compile-time errors catch
+more issues
+Initially
+steeper;
+requires
+paradigm shift from mutation to
+transformation
+Explicit state passing with immutable data structures
+Composition of pure components; functors create parameterized components
+Longer initial learning period
+but more sustainable practices;
+harder to inadvertently break existing functionality
+
+Table 6.5: Developer Experience Comparison: Imperative vs. Functional Approaches
+Through the implementation of the ERP UI Library, several key insights about developer
+experience emerged:
+• Mental Model Shift: Developing with functional principles requires a fundamental
+shift in thinking about UI construction, from direct manipulation of UI elements to
+describing transformations between states. This initial cognitive load decreased over
+time as patterns became familiar.
+• Error Discovery Timing: The functional approach shifted error discovery earlier in
+the development cycle. With imperative approaches, many errors manifest at runtime,
+whereas SML’s type system caught numerous issues during compilation.
+• Component Integration: The explicit dependency model made component integration more predictable but sometimes more verbose than imperative approaches where
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+87
+
+shared global state is assumed.
+• Maintenance Workflows: Bug fixing became more localized, with issues often confined to specific functions rather than requiring broad systemic understanding. This
+locality significantly reduced the cognitive load during maintenance.
+• Documentation Value: Strong type signatures served as built-in documentation,
+making the library more self-documenting than equivalent imperative implementations
+where types might be looser or dynamic.
+Perhaps most significantly, the functional approach changed how developers relate to
+time in the development process. Rather than thinking about the sequence of steps to
+update the UI (imperative), developers focus on the relationship between data and its visual
+representation (declarative). This shift aligns particularly well with ERP applications where
+data relationships and transformations are central to the business domain.
+
+6.3.3
+
+Comparative Advantages
+
+Compared to traditional imperative approaches, the ERP UI Library demonstrates several
+advantages that stem directly from its functional foundation:
+• Reduced State-Related Bugs: The immutable approach to state management reduces the occurrence of bugs related to unexpected state mutations, a common challenge
+in imperative UI frameworks.
+• Enhanced Testability: Pure functions and explicit dependencies make components
+easier to test in isolation, improving overall code quality and reliability.
+• Clearer Data Flow: The functional approach creates a more explicit data flow
+through the application, making it easier to understand how information moves through
+the system.
+• Improved Refactoring Safety: The strong type system and immutable structures
+make refactoring safer, allowing for more confident evolution of the codebase over time.
+
+6.3.4
+
+Practical Implications
+
+The successful implementation of the ERP UI Library has several practical implications for
+enterprise software development:
+1. It demonstrates that functional programming is viable for real-world enterprise UI
+development, challenging the notion that functional approaches are too academic or
+impractical for business applications.
+2. It provides a pattern for adapting modern component-based UI architecture to functional programming languages like SML, bridging the gap between theoretical advantages and practical implementation.
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+88
+
+3. It establishes a foundation for future ERP UI development that combines the reliability
+benefits of functional programming with the usability and aesthetic considerations of
+modern interface design.
+4. It offers empirical evidence that the initial complexity of adopting functional programming can be offset by long-term benefits in maintainability and reliability, critical factors
+in enterprise systems.
+
+6.4
+
+Limitations
+
+While the ERP UI Library successfully demonstrates the application of functional programming to ERP interface development, several limitations were identified during implementation
+and testing:
+
+6.4.1
+
+Technical Limitations
+
+• Performance Overhead: In some cases, the immutable data approach introduces
+performance overhead compared to direct manipulation of UI elements, particularly for
+large data sets or frequently updated components. While acceptable for most enterprise
+scenarios, this could become problematic in high-throughput applications.
+• GTK Constraints: The underlying GTK toolkit occasionally limits the implementation of purely functional patterns, requiring pragmatic compromises in the API design.
+The reference-based token system represents one such compromise, balancing functional
+ideals with practical requirements.
+• Limited Animation Support: Complex animations and transitions are challenging
+to implement in a purely functional manner, resulting in more basic visual transitions
+compared to imperative alternatives like React’s animation libraries.
+• Incomplete Theming: The theme switching functionality remains partially implemented, limiting the library’s adaptability to diverse branding requirements without
+code modifications.
+
+6.4.2
+
+Developmental Challenges
+
+Several significant challenges were encountered during the library’s development:
+• Development Environment Issues: Development required using VirtualBox on
+Windows, which led to frequent system crashes and graphical glitches. This infrastructure challenge created significant stress and productivity barriers throughout the
+implementation process.
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+89
+
+• Limited Community Support: The small SML ecosystem meant seeking help from
+the Giraffe mailing list for even basic tasks like implementing multipage desktop applications. This process was time-consuming and often yielded incomplete solutions due
+to the limited number of active community members.
+• Inadequate Documentation: The Giraffe library and related SML tooling suffer
+from incomplete and outdated documentation, requiring extensive experimentation and
+trial-and-error approaches to implement core functionality.
+• Functor Limitations: Overcoming the theoretical limitations of SML functors required complex workarounds, particularly when implementing features like dynamic
+component composition that are straightforward in more mainstream frameworks.
+• Image Processing Challenges: Implementing image manipulation functionality
+proved particularly difficult due to the lack of robust image processing libraries in SML,
+requiring low-level implementation of functionality that would be trivial in languages
+with more mature ecosystems.
+• Learning Curve: The combination of functional programming paradigms with UI
+development concepts creates a steeper learning curve for developers accustomed to
+imperative frameworks. Documentation and examples mitigate but do not eliminate
+this challenge.
+• Integration Complexity: Integrating with existing enterprise systems, particularly
+those built on non-functional technologies, introduces complexity that requires careful
+API design and interaction patterns.
+• Testing Framework Limitations: The testing tools available for SML are less mature
+than those for mainstream languages, making comprehensive automated testing more
+challenging to implement.
+
+6.5
+
+Future Work
+
+The ERP UI Library implementation establishes a foundation for functional programming
+in enterprise UI development, with several promising directions for future extension and
+improvement:
+
+6.5.1
+
+Theme Switching Completion
+
+As noted in the presentation materials [Osakue, 2025], the theme switching feature was
+started but not completed during the current development cycle. Future work will focus
+on finalizing this functionality, enabling:
+• Runtime switching between light and dark themes
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+90
+
+• Organization-specific branding through configurable color schemes
+• Accessibility-focused theme variants with enhanced contrast and readability
+• Theme persistence across application sessions
+The foundation for this work exists in the current token reference system, which was
+specifically designed to enable global theme adjustments while maintaining local immutability.
+
+6.5.2
+
+Component Extensions
+
+Future development will expand the component library to include:
+• More advanced data visualization components for business intelligence
+• Specialized form components for complex data entry scenarios common in ERP systems
+• Responsive layout components that better adapt to different screen sizes and device
+types
+• Internationalization support for multilingual enterprise applications
+
+6.5.3
+
+Performance Optimizations
+
+Future work will address performance considerations through:
+• Implementation of more efficient immutable data structures for large data sets
+• Virtual rendering techniques for long lists and large tables
+• More granular component updates to minimize re-rendering
+
+6.6
+
+Summary
+
+The ERP UI Library successfully demonstrates that functional programming principles can
+be effectively applied to enterprise UI development, addressing the research question posed
+in Chapter 1. The implementation balances theoretical functional programming ideals with
+practical requirements, producing a library that delivers on the key objectives of improved
+maintainability, consistency, type safety, and developer productivity.
+Through a component-based architecture built on immutability, pure functions, and
+strong typing, the library provides a viable alternative to traditional imperative approaches
+for ERP interface development. The results show that while functional programming introduces some initial complexity and learning curve challenges, it offers significant advantages
+in terms of code quality, predictability, and long-term maintainability—factors of particular
+importance in enterprise systems with long lifespans.
+
+CHAPTER 6. RESULTS AND DISCUSSION
+
+91
+
+The limitations identified and future work proposed provide a roadmap for continuing development that will further strengthen the library’s capabilities and address remaining challenges. As enterprise systems continue to grow in complexity and importance, approaches that
+enhance reliability and maintainability, such as those demonstrated by the ERP UI Library,
+will become increasingly valuable to organizations seeking sustainable software solutions.
+
+Chapter 7
+
+Conclusions
+This research explored how functional programming principles can be applied to enterprise
+UI development, specifically addressing the challenges of ERP interfaces through the implementation of the ERP UI Library. This concluding chapter synthesizes the key findings,
+discusses their implications, and suggests directions for future work.
+
+7.1
+
+Summary of Key Findings
+
+The central research question posed in Chapter 1 asked how functional programming principles could be effectively applied to develop enterprise-grade UI libraries that improve maintainability, consistency, type safety, and developer productivity compared to traditional imperative approaches. Through the implementation and evaluation of the ERP UI Library,
+several significant findings have emerged:
+1. Viable Alternative: Functional programming provides a viable alternative to imperative approaches for ERP UI development, with the ERP UI Library demonstrating
+that functional principles can be successfully applied to create complex, interactive
+interfaces that meet enterprise requirements.
+2. Enhanced Predictability: The immutable data structures and pure functions central
+to the library’s architecture resulted in more predictable UI behavior with explicit state
+changes, addressing a key challenge in long-lived enterprise systems.
+3. Type Safety Benefits: SML’s strong type system demonstrated concrete advantages
+in preventing runtime errors through compile-time checking, with the library’s signatures and interfaces ensuring components are used correctly.
+4. Compositional Architecture: The library’s compositional approach proved effective
+in building complex interfaces from simpler components, directly validating Hudak’s
+(2000) assertions about functional composition benefits and Wadler’s (1995) emphasis
+on pure functions for UI construction discussed in Chapter 2.
+
+92
+
+CHAPTER 7. CONCLUSIONS
+
+7.2
+
+93
+
+Contributions
+
+This research makes several contributions to the field of functional programming and enterprise UI development:
+1. It provides empirical evidence via the prototype library that functional programming
+principles can be effectively applied to enterprise UI development, an area traditionally
+dominated by imperative approaches.
+2. It offers a practical pattern for adapting component-based UI architectures to functional
+languages, bridging the gap between theoretical functional programming advantages
+and real-world implementation.
+3. It demonstrates how functional programming patterns can address specific ERP interface challenges, particularly around state management, visual consistency, and code
+maintainability.
+4. It identifies and documents practical implementation patterns for overcoming the challenges of functional UI development, such as controlled state management through
+reference cells and functors for component parameterization.
+Future work would focus on completing the theme switching functionality, expanding
+component offerings, optimizing performance for large datasets, and developing better tooling
+for the SML ecosystem. The foundation established by this work provides a solid platform
+for continued exploration of functional programming in enterprise UI development.
+
+7.3
+
+Closing Reflections
+
+The ERP UI Library demonstrates that functional programming offers valuable benefits for
+enterprise UI development, particularly in contexts where long-term maintainability, predictable behaviour, and code quality are paramount concerns. While not without challenges,
+the functional approach provides a promising alternative to traditional imperative methods
+for building complex enterprise interfaces.
+As enterprise systems continue to grow in complexity and importance, approaches that
+enhance reliability and maintainability will become increasingly valuable. This research suggests that functional programming, when pragmatically applied with appropriate patterns
+and architectural decisions, offers a compelling path forward for creating sustainable, robust
+enterprise user interfaces.
+
+Bibliography
+[Clayton, ] Clayton, P. https://giraffelibrary.org/.
+[Czaplicki, 2012] Czaplicki, E. (2012). Elm: Concurrent frp for functional guis. Senior Thesis,
+Harvard University.
+[Czaplicki and Chong, 2013] Czaplicki, E. and Chong, S. (2013). Asynchronous functional
+reactive programming for guis. In Proceedings of the 34th ACM SIGPLAN Conference on
+Programming Language Design and Implementation (PLDI ’13), pages 411–422, Seattle,
+WA, USA. ACM.
+[Deng, 2024] Deng, C. (2024). Comparing graphical user interface developement in java swing
+and standard ml giraffe library. Master’s thesis, University of Sheffield.
+[Dittrich and Vaucouleur, 2008] Dittrich, Y. and Vaucouleur, S. (2008). Customization and
+upgrading of erp systems: An empirical perspective. Technical Report ITU-TR-2008-105,
+IT University of Copenhagen, Copenhagen, Denmark.
+[Dusted, 2024] Dusted (2024). How to achieve a consistent user interface using design systems. Accessed: 2 April 2025.
+[Elliott and Hudak, 1997] Elliott, C. and Hudak, P. (1997). Functional reactive animation.
+In Proceedings of the second ACM SIGPLAN international conference on Functional programming, pages 263–273. ACM.
+[Gilmore, 2003] Gilmore, S. (2003). Programming in standard ml ’97: A tutorial introduction. Technical report, University of Edinburgh. Technical Report ECS-LFCS-2003-231.
+[Hughes, 1990] Hughes, J. (1990). Why functional programming matters. In Turner, D. A.,
+editor, Research Topics in Functional Programming, pages 3–107. Addison-Wesley.
+[Osakue, 2025] Osakue, O. (2025). Omosefe’s diss deck. Dissertation presentation slides.
+[Redux Team, 2024] Redux Team (2024). Redux fundamentals, part 3: State, actions, and
+reducers. Accessed: 2025-05-15.
+[Reeves, 2017] Reeves, M. (2017). Implementing glib collectiontypes in the giraffe library.
+Technical report, Uppsala University.
+94
+
+BIBLIOGRAPHY
+
+95
+
+[Retain International, 2024] Retain International (2024). 54 erp statistics and trends you
+need to know. Accessed April 25, 2025.
+[Sommerville, 2015] Sommerville, I. (2015). Software Engineering. Pearson Education Limited, Harlow, England, 10 edition.
+[Stack Overflow Insights, 2024] Stack Overflow Insights (2024). Developer survey 2024.
+[Staltz, 2017] Staltz, A. (2017). Why we need functional ui. Medium. Accessed: 2025-05-15.
+[The official AngularJS documentation, ] The official AngularJS documentation. Guide to
+AngularJS Documentation.
+[The official React documentation, ] The official React documentation.
+Overview.
+
+React Reference
+
+[Vercel, 2021] Vercel (2021). Guide to vue.js.
+[Yang, 2024] Yang, J. (2024). A comparative analysis of swing and giraffe in library management systems. Master’s thesis, University of Sheffield.
+
+

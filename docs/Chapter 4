@@ -1,0 +1,166 @@
+4.0 Chapter Overview
+
+The design of this Quiz Application centers on a MERN stack implementation that addresses core security 
+and performance requirements for online assessments. This chapter examines the architectural decisions,
+ security mechanisms, and user interface designs that form the foundation of the system. 
+The design incorporates server-enforced time windows, multi-factor access controls, 
+and IP-based restrictio while maintaining focus on data integrity through atomic operations and comprehensive audit logging.
+
+4.1 User Interface & User Experience Design
+
+4.1.1 Design Philosophy
+The interface architecture implements a strict separation between academic and student functionalities
+through role-based component hierarchies. This separation extends beyond mere visual organization, 
+serving as the first layer of the system's security model. For academic users, 
+ the interface presents a comprehensive management dashboar d incorporating quiz creation tools, 
+ question banks with version control, and detailed analytics interfaces.
+ The student interface, conversely, provides a streamlined experience focused on quiz discovery, participation, and result viewing, 
+ with each component enforcing specific security constraints through the middleware pipeline.
+
+4.1.2 Primary User Journeys
+
+The student journey begins with JWT-based authentication,
+ leading to a personalized dashboard displaying only eligible quizzes based on time windows,
+  IP restrictions, and assignment status. Upon selecting a quiz, students navigate through a secure launch sequence requiring access code verification and receiving a short-lived launch ticket. 
+  The quiz-taking interface enforces time constraints and prevents manipulation attempts, culminating in an atomic submission process that guarantees data integrity.
+
+Academic users interact with a separate interface layer centered on quiz management workflows. 
+After authentication, they access tools for question creation and management, with built-in version control and soft-delete capabilities.
+ The interface supports configuration of security parameters including IP range restrictions, time windows, and student assignments. 
+ Real-time monitoring capabilities provide visibility into submission status and results, backed by comprehensive audit logging.
+
+4.1.3 Navigation Structure
+
+The application implements a hierarchical navigation model that reinforces security boundaries between roles. 
+The student interface flows from dashboard through quiz discovery to the quiz-taking environment, with each transition passing through security validation gates. 
+The academic interface branches into quiz management, question banking, and analytics sections, each supported by role-verified API endpoints.
+ This structure maps directly to the Express.js routing hierarchy, ensuring consistent security enforcement at both UI and API layers.
+
+4.1.4 Security and Validation
+
+The interface layer integrates multiple security mechanisms through a defense-in-depth approach. 
+All critical operations require server-side validation, with client-side checks providing immediate feedback without compromising security. 
+The JWT authentication system gates all routes, while IP-based restrictions through CIDR notation limit access to authorized networks. 
+Quiz access requires valid launch tickets, preventing unauthorized attempts through direct URL manipulation.
+ The system implements atomic operations for submissions, preventing race conditions and duplicate entries.
+
+Current technical limitations require attention: the client-side timer lacks server synchronization, 
+assignment verification needs strengthening in launch flows, 
+CORS configuration remains overly permissive,
+ and password storage requires bcrypt implementation.
+  These limitations are documented and prioritized in the security enhancement roadmap.
+
+4.2 System Architecture
+
+4.2.1 High-level architecture (MERN).
+
+The Quiz Application leverages the MERN stack architecture to establish a three-tiered system.
+ At the presentation layer, React drives the frontend interface, orchestrating role-specific experiences through specialized dashboards. 
+ Academic users interact with quiz creation and monitoring interfaces, while students navigate through assessment discovery
+  and completion workflows. The frontend emphasizes modularity through custom hooks that manage quiz availability and submission states, 
+  while feature flags enable controlled deployment of new capabilities.
+
+Express.js powers the middleware tier, implementing a sophisticated request pipeline that enforces multi-layered security.
+ Each incoming request traverses through authentication verification, role-based authorization, launch ticket validation, 
+ and IP filtering before reaching the core business logic controllers. These controllers orchestrate quiz lifecycle operations, 
+ from creation and access control to submission handling and results compilation.
+
+MongoDB serves as the persistence layer, storing domain entities in a document-oriented structure. 
+The database schema encompasses user profiles, quiz configurations, question banks, and submission records.
+ Strategic indexing and unique constraints safeguard data integrity, particularly for preventing duplicate submissions through atomic operations. 
+ An optional question versioning system maintains modification audit trails for enhanced accountability.
+
+Figure 4.2 illustrates this architecture, depicting the flow from client interactions through the layered middleware to the database, highlighting the system's commitment to security and scalability.
+
+4.2.2 Key request/response flows
+
+The quiz application orchestrates three critical interaction sequences that safeguard assessment integrity. 
+The eligibility determination flow initiates when students query available assessments through GET /api/quizzes/eligible. 
+This endpoint filters assignments based on time windows, previous attempts, and student enrollment status, 
+ensuring students only access appropriate content.
+
+The secure launch sequence begins with POST /quizzes/:id/launch, incorporating multiple validation gates. T
+his flow verifies access codes against bcrypt hashes, validates IP addresses against CIDR allowlists, and confirms student assignment status. 
+Upon successful validation, the system generates a short-lived JWT launch ticket, binding the session to specific parameters.
+
+The final sequence, GET /quizzes/:id/start, validates the launch ticket through middleware inspection of the x-quiz-launch header.
+ This phase enforces time window constraints with clock skew tolerance and initiates the assessment delivery process. 
+ Figures 4.3-4.5 illustrate these sequences, highlighting the defense-in-depth approach to access control.
+
+4.2.3 API Surface
+
+The application exposes a carefully crafted set of endpoints, each protected by specific security prerequisites. 
+The authentication layer employs JWT tokens for identity verification, while specialized middleware enforces launch tickets, 
+IP restrictions, and time windows. Each route serves a distinct purpose in the assessment lifecycle, from creation through submission. 
+Table 4.1 presents the comprehensive API surface, detailing routes, methods, access requirements, and expected responses.
+
+4.2.4 Data Model and Persistence
+
+The persistence layer employs MongoDB's document-oriented structure to maintain assessment integrity and auditability.
+ The User collection manages authentication credentials and role-based permissions, distinguishing between academic and student access patterns. 
+
+Quiz documents encapsulate assessment parameters, including time constraints, access control mechanisms (hashed access codes and CIDR ranges),
+ and student assignments. The system enforces time windows through server-side validation, mitigating client-side manipulation risks.
+
+Questions reside in their dedicated collection, incorporating versioning capabilities through soft deletion. 
+This approach maintains question history while enabling seamless updates.
+ Each question document contains evaluation criteria, point values, and answer keys, facilitating automated assessment.
+
+The Results collection implements atomic operations through unique compound indexes on {quizId, studentId}, preventing duplicate submissions.
+ Each result document captures response data, computation duration, and performance metrics, enabling comprehensive assessment analysis.
+
+An optional QuestionVersions collection maintains modification trails, enhancing accountability in assessment management. 
+Figure 4.6 visualizes these relationships, while Table 4.2 details the strategic indexes that optimize query performance and enforce data integrity constraints.
+
+4.3 Design for Testability
+
+The quiz application's architecture incorporates testing considerations across multiple layers, 
+enabling comprehensive validation of security mechanisms and functional requirements.
+Test fixtures populate the MongoDB collections with predefined datasets, including academic users, 
+student profiles, quiz configurations, and question banks. 
+These fixtures simulate various assessment scenarios, 
+from simple true/false questions to complex multi-part evaluations, 
+providing consistent test conditions across development iterations.
+
+The middleware architecture facilitates isolated testing through modular components.
+Each security layer - authentication, launch ticket validation, IP filtering,
+and time window enforcement - operates independently, allowing targeted verification of specific controls.
+This isolation enables thorough examination of edge cases, such as expired tokens, invalid CIDR ranges, or clock synchronization issues,
+without interference from other system components.
+
+Time-dependent operations utilize deterministic clock implementations, crucial for validating temporal access controls. 
+The test environment injects controlled timestamps into the isQuizOpen function, verifying assessment availability logic and clock skew tolerance.
+This approach ensures reliable validation of time window constraints and submission deadlines without waiting for actual time intervals to elapse.
+
+Database interactions employ automated reset mechanisms through mongoose hooks, maintaining test isolation between suites.
+These hooks clear collections, reset indexes, and restore initial states, preventing test cross-contamination.
+The system preserves audit logs and version histories during resets, enabling verification of the quiz versioning system and
+modification tracking while maintaining test independence.
+
+The test architecture particularly focuses on race condition scenarios in submission handling,
+utilizing concurrent test runners to verify atomic operations and duplicate prevention.
+Integration tests validate the entire security pipeline, ensuring proper interaction between authentication,
+access control, and data persistence layers while maintaining transaction integrity under load.
+
+4.4 Design Rationale & Trade-offs
+
+The adoption of MongoDB over traditional SQL databases stems from the dynamic nature of quiz content and evaluation criteria. 
+MongoDB's flexible document model accommodates evolving question formats and metadata without requiring schema migrations, 
+while still maintaining data integrity through compound indexes and atomic operations.
+
+Questions exist as independent documents rather than embedded arrays within quizzes, enabling efficient versioning and concurrent modifications
+. This architecture facilitates question reuse across assessments while preserving historical changes for audit purposes.
+ The performance cost of additional queries is offset by MongoDB's indexing capabilities and the reduced document sizes.
+
+The browser-based implementation leverages existing security infrastructure and validation frameworks while eliminating platform-specific deployment complexities. 
+Modern browsers' sandboxing and same-origin policies provide additional security layers beyond application-level controls. 
+The React framework's component model enables consistent enforcement of access controls and time constraints across the interface.
+
+Security measures balance risk mitigation with practical usability. CIDR-based IP filtering allows institutional network ranges 
+while preventing unauthorized access. The five-minute clock skew tolerance accommodates minor time synchronization discrepancies without 
+compromising the assessment window's integrity. The dual-factor authentication flow (access code + launch ticket) 
+creates distinct authorization gates while remaining intuitive for users.
+
+These architectural decisions directly address the core requirements: timed assessment delivery through server-enforced windows, 
+machine restriction via IP filtering, anonymous grading through randomized submission IDs, and partial credit support via flexible scoring models. 
+The system achieves these goals while maintaining horizontal scalability through stateless authentication and persistent ticket tracking.

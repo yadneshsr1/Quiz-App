@@ -1,0 +1,205 @@
+\chapter{Requirement and Analysis}
+
+\chapter{System Requirements Analysis}
+
+\section{Introduction}
+
+The development of a comprehensive quiz management system requires a thorough analysis of functional and non-functional requirements to ensure the platform meets the diverse needs of academic institutions. This chapter presents a detailed requirements analysis based on the implemented system, covering user roles, core functionalities, security considerations, and performance requirements. The analysis draws from stakeholder needs in educational environments and best practices in web application development.
+
+\section{Requirements of the System}
+
+
+
+\begin{itemize}
+    \item \textbf{User Stories}: 
+    \item \textbf{Functional Requirements}: 
+    \item \textbf{Non-Functional Requirements}: 
+\end{itemize}
+
+The requirements prioritization methodology draws from two key sources: recent empirical research by Vijayakumar et al. (2024) on MoSCoW effectiveness in software development,
+ and the structured approach demonstrated in Osakue's (2025) dissertation on functional programming libraries. 
+ Vijayakumar's research, involving 172 development team members, revealed that while MoSCoW provides a clear framework for requirement categorization, i
+ ts practical application presents specific challenges. The study documented a 72.67\% completion rate for prioritization tasks, 
+ with participants taking an average of 3 minutes per requirement decision. These metrics informed the time allocation and documentation approach for this project's requirement analysis phase.
+
+Osakue's dissertation demonstrated how MoSCoW prioritization can effectively categorize functional requirements in library development, 
+particularly when dealing with technical constraints and component hierarchies. 
+Building on this framework, the requirements analysis for this quiz application adopts a similar tabular structure, organizing features into must-have core functionality, should-have important enhancements, could-have desirable additions, and won't-have excluded features. 
+The sentiment analysis from Vijayakumar's study, which showed 58.1\% negative sentiment using VADER analysis primarily due to implementation confusion, prompted the inclusion of explicit categorization criteria and regular validation cycles in the prioritization process.
+
+
+% They have been prioritised using the MoSCoW framework, categorising each as Must-
+Have, Should-Have, Could-Have, or Won’t-Have. This prioritisation approach ensures de-
+velopment resources are allocated appropriately. The MoSCoW framework is given
+
+
+% Put here MosCoW framework must have, could have should have, won't have details
+
+
+\subsection{User Stories}
+
+\begin{table}
+\centering
+\begin{tabular}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{Role} & \textbf{User Stories} \\
+\hline
+\multirow{7}{*}{Academic Staff} & \textbf{Authentication \& Profile:} As an academic staff member I want to log in with my credentials so that I can access the quiz management system \\
+\cline{2-2}
+& \textbf{Quiz Management:} As an academic staff member I want to create new quizzes with specific time windows so that I can control when students can take the assessment \\
+\cline{2-2}
+& \textbf{Question Management:} As an academic staff member I want to create and manage questions with multiple options so that I can build comprehensive assessments \\
+\cline{2-2}
+& \textbf{Access Control:} As an academic staff member I want to set access codes for quizzes so that only authorized students can participate \\
+\cline{2-2}
+& \textbf{IP Restrictions:} As an academic staff member I want to restrict quiz access to specific IP ranges so that students can only take quizzes from approved locations \\
+\cline{2-2}
+& \textbf{Student Assignment:} As an academic staff member I want to assign specific students to quizzes so that I can control who has access to each assessment \\
+\cline{2-2}
+& \textbf{Results Management:} As an academic staff member I want to view quiz results and analytics so that I can assess student performance \\
+\hline
+\multirow{7}{*}{Student} & \textbf{Authentication \& Profile:} As a student I want to log in with my credentials so that I can access my assigned quizzes \\
+\cline{2-2}
+& \textbf{Quiz Access:} As a student I want to see my eligible quizzes so that I know which assessments I need to complete \\
+\cline{2-2}
+& \textbf{Quiz Taking:} As a student I want to enter an access code to start a quiz so that I can verify my authorization to take the assessment \\
+\cline{2-2}
+& \textbf{Quiz Participation:} As a student I want to see the remaining time while taking a quiz so that I can manage my time effectively \\
+\cline{2-2}
+& \textbf{Answer Submission:} As a student I want to submit my answers before the time expires so that my responses are recorded properly \\
+\cline{2-2}
+& \textbf{Results View:} As a student I want to see my quiz results after submission so that I can know my performance \\
+\hline
+\end{tabular}
+\caption{User Stories Table}
+\label{tab:user-stories-table}
+\end{table}
+
+
+
+\begin{table}
+\centering
+\begin{tabular}{|p{3cm}|p{11cm}|}
+\hline
+\textbf{Category} & \textbf{Description} \\
+\hline
+Must Have & The requirements must be met on time and contain the specifications that are essential to the project's success.  If these components were not implemented, the project would fail or have a significant negative impact on stakeholders.  \\
+
+\hline
+Should Have & Important requirements that are desirable but not essential for the project's immediate success.  These enhance the product's overall worth and should be included after all necessary characteristics have been satisfied. \\
+
+\hline
+Could Have & Extra criteria that enhance the product but are not required for its primary functions. These things may be completed if time and finances permit, but they are not prioritized over must-have or should-have items.  \\
+
+
+\hline
+Won't Have & Needs that are expressly excluded from the current scope of the project. These are either deferred to subsequent iterations or considered low priority for the current development cycle.\\
+\hline
+\end{tabular}
+\caption{MoSCoW Prioritisation Table}
+\label{tab:user-stories-table}
+\end{table}
+
+
+
+
+\subsection{MUST HAVE (Essential Core Features)}
+\begin{table}[h!]
+\centering
+\begin{tabular}{|p{3.5cm}|p{4cm}|p{6.5cm}|}
+\hline
+\textbf{Requirement} & \textbf{Description} & \textbf{Justification} \\
+\hline
+\multirow{2}{*}{Authentication System} & Dual-role login system supporting distinct academic and student access with separate privileges & Fundamental security requirement for maintaining system integrity and user role separation \\
+\cline{2-3}
+\multirow{2}{*}{Question Management} & Interface for academics to create true/false and multiple-choice questions with feedback mechanisms for incorrect answers & Forms the core assessment functionality; essential for basic quiz creation and learning support \\
+\cline{2-3}
+\multirow{2}{*}{Quiz Timing Controls} & System to enforce quiz availability windows and manage duration limits & Critical for maintaining assessment integrity and ensuring fair testing conditions \\
+\cline{2-3}
+\multirow{2}{*}{Student Assignment} & Framework to link specific students to designated quizzes with access control & Essential for managing course-specific assessments and controlling quiz access \\
+\cline{2-3}
+\multirow{2}{*}{Basic Security} & IP-based restrictions and machine-specific access controls with validation & Crucial for preventing unauthorized access and ensuring secure test environments \\
+\cline{2-3}
+\multirow{2}{*}{Result Management} & Automated scoring system with result display functionality for both roles & Fundamental for assessment completion and feedback loop \\
+\cline{2-3}
+\multirow{2}{*}{Advanced Security} & Access code protection and launch ticket system for quiz access & Essential for preventing unauthorized access and maintaining session security \\
+\hline
+\end{tabular}
+\caption{MUST HAVE Requirements}
+\label{tab:must-have}
+\end{table}
+
+\subsection{SHOULD HAVE (Important Features)}
+\begin{table}[h!]
+\centering
+\begin{tabular}{|p{3.5cm}|p{4cm}|p{6.5cm}|}
+\hline
+\textbf{Requirement} & \textbf{Description} & \textbf{Justification} \\
+\hline
+\multirow{2}{*}{Advanced Question Types} & Support for questions requiring manual grading and partial credit allocation & Enhances assessment flexibility and allows for complex evaluation scenarios \\
+\cline{2-3}
+\multirow{2}{*}{Automated Marking} & System for detecting identical answers and ensuring consistent scoring across submissions & Improves grading efficiency and maintains assessment fairness \\
+\cline{2-3}
+\multirow{2}{*}{Question Versioning} & System for tracking question history and managing soft deletions & Important for content management and maintaining question bank integrity \\
+\cline{2-3}
+\multirow{2}{*}{Student Identification} & Photo display and management system during quiz sessions & Enhances security through visual verification of test-taker identity \\
+\hline
+\end{tabular}
+\caption{SHOULD HAVE Requirements}
+\label{tab:should-have}
+\end{table}
+
+\subsection{COULD HAVE (Desirable Features)}
+\begin{table}[h!]
+\centering
+\begin{tabular}{|p{3.5cm}|p{4cm}|p{6.5cm}|}
+\hline
+\textbf{Requirement} & \textbf{Description} & \textbf{Justification} \\
+\hline
+\multirow{2}{*}{Feature Flags} & System for controlled feature deployment and testing & Enables gradual rollout of new functionality and better risk management \\
+\cline{2-3}
+\multirow{2}{*}{Advanced Analytics} & Comprehensive metrics for quiz performance and student progress tracking & Provides valuable insights for academic staff and improves assessment quality \\
+\cline{2-3}
+\multirow{2}{*}{Cache Management} & ETag-based request optimization and performance enhancements & Improves system responsiveness and user experience \\
+\cline{2-3}
+\multirow{2}{*}{Audit Logging} & Detailed tracking of security events and user actions & Enhances system monitoring and security incident response \\
+\cline{2-3}
+\multirow{2}{*}{Two-Factor Auth} & Additional authentication layer for enhanced security & Provides extra protection for sensitive operations \\
+\cline{2-3}
+\multirow{2}{*}{Monitoring Tools} & Performance monitoring and system health tracking & Ensures system reliability and early problem detection \\
+\hline
+\end{tabular}
+\caption{COULD HAVE Requirements}
+\label{tab:could-have}
+\end{table}
+
+\subsection{WON'T HAVE (Out of Scope)}
+\begin{table}[h!]
+\centering
+\begin{tabular}{|p{3.5cm}|p{4cm}|p{6.5cm}|}
+\hline
+\textbf{Requirement} & \textbf{Description} & \textbf{Justification} \\
+\hline
+\multirow{2}{*}{Real-time Collaboration} & Simultaneous multi-user quiz interaction features & Not essential for core assessment functionality \\
+\cline{2-3}
+\multirow{2}{*}{Mobile Application} & Dedicated mobile platform version & Web application meets current needs adequately \\
+\cline{2-3}
+\multirow{2}{*}{Rich Media Questions} & Support for video/audio question formats & Beyond scope of basic assessment requirements \\
+\cline{2-3}
+\multirow{2}{*}{Advanced Formatting} & Complex content formatting in questions & Simple formatting sufficient for current needs \\
+\cline{2-3}
+\multirow{2}{*}{ML-Based Evaluation} & Automated answer evaluation using machine learning & Complexity outweighs benefit for current version \\
+\cline{2-3}
+\multirow{2}{*}{Biometric Verification} & Advanced biological identification methods & Current security measures are sufficient \\
+\cline{2-3}
+\multirow{2}{*}{GDPR Compliance} & Comprehensive data protection features & Reserved for future version with international deployment \\
+\cline{2-3}
+\multirow{2}{*}{Advanced Caching} & Redis-based caching implementation & Standard caching meets current performance needs \\
+\cline{2-3}
+\multirow{2}{*}{Connection Pooling} & Advanced database connection management & Current database handling is adequate \\
+\hline
+\end{tabular}
+\caption{WON'T HAVE Requirements}
+\label{tab:wont-have}
+\end{table}
+

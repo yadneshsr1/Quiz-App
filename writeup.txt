@@ -1,0 +1,212 @@
+The development of a comprehensive quiz management 
+system requires a thorough analysis of functional 
+and non-functional requirements to ensure the platform
+meets the diverse needs of academic institutions.
+This chapter presents a complete requirements analysis based 
+on the implemented system, covering user roles, core functionalities, 
+security considerations, and performance requirements. 
+The analysis draws from stakeholder needs in educational 
+environments and best practices in web application development.
+
+To ensure systematic prioritization and effective resource allocation 
+during development, this requirements analysis employs the MoSCoW 
+prioritization framework (Must have, Should have, Could have, Won't have) \cite{}. 
+This approach enables clear distinction between critical system functionality 
+that is essential for basic operation (Must have), important features that 
+significantly enhance user experience (Should have), desirable enhancements 
+that add value when resources permit (Could have), and features explicitly 
+excluded from the current scope (Won't have). The MoSCoW framework provides 
+a structured methodology for stakeholder communication and helps maintain 
+project focus while managing scope creep in academic software development 
+projects.
+
+
+They have been prioritised using the MoSCoW framework, categorising each as Must-
+Have, Should-Have, Could-Have, or Won’t-Have. This prioritisation approach ensures de-
+velopment resources are allocated appropriately. The MoSCoW framework is given
+
+
+Academic Staff User Stories:
+
+1. Authentication & Profile
+As an academic staff member
+I want to log in with my credentials
+So that I can access the quiz management system
+
+2. Quiz Management
+As an academic staff member
+I want to create new quizzes with specific time windows
+So that I can control when students can take the assessment
+
+3. Question Management
+As an academic staff member
+I want to create and manage questions with multiple options
+So that I can build comprehensive assessments
+
+4. Access Control
+As an academic staff member
+I want to set access codes for quizzes
+So that only authorized students can participate
+
+5. IP Restrictions
+As an academic staff member
+I want to restrict quiz access to specific IP ranges
+So that students can only take quizzes from approved locations
+
+6. Student Assignment
+As an academic staff member
+I want to assign specific students to quizzes
+So that I can control who has access to each assessment
+
+7. Results Management
+As an academic staff member
+I want to view quiz results and analytics
+So that I can assess student performance
+
+Student User Stories:
+
+1. Authentication & Profile
+As a student
+I want to log in with my credentials
+So that I can access my assigned quizzes
+
+
+
+3. Quiz Access
+As a student
+I want to see my eligible quizzes
+So that I know which assessments I need to complete
+
+4. Quiz Taking
+As a student
+I want to enter an access code to start a quiz
+So that I can verify my authorization to take the assessment
+
+5. Quiz Participation
+As a student
+I want to see the remaining time while taking a quiz
+So that I can manage my time effectively
+
+6. Answer Submission
+As a student
+I want to submit my answers before the time expires
+So that my responses are recorded properly
+
+7. Results View
+As a student
+I want to see my quiz results after submission
+So that I can know my performance
+
+
+MUST HAVE (Essential features)
+1. Authentication system for both academics and students
+2. Question creation and management by academics
+   - True/false questions (initial requirement)
+   - Multiple choice questions
+   - Question feedback for wrong answers
+3. Quiz timing controls
+   - Fixed time windows for quiz availability
+   - Quiz duration management
+3. Student assignment system
+   - Ability to associate specific students with quizzes
+5. Basic security features
+   - IP-based access restrictions
+   - Machine-specific access control
+6. Result recording and management
+   - Basic score calculation
+   - Result viewing for both academics and students
+2. Advanced security features
+   - Access code protection
+   - Launch ticket system
+
+
+SHOULD HAVE (Important but not vital)
+1. Advanced question types
+   - Questions requiring human marking
+   - Partial marking capability
+
+4. Automated marking system
+   - Identical answer detection
+   - Consistent marking across identical answers
+5. Question versioning
+   - Version history tracking
+   - Soft delete capability
+4. Student identification system
+   - Student photo display during quiz
+   - Student photo management
+
+COULD HAVE (Desirable but not necessary)
+1. Feature flag system for controlled rollouts
+2. Advanced analytics
+   - Quiz performance metrics
+   - Student performance tracking
+3. Cache management system
+   - ETag-based conditional requests
+   - Performance optimization
+4. Comprehensive audit logging
+   - Security event tracking
+   - User action logging
+5. Two-factor authentication
+6. Advanced monitoring capabilities
+   - Application performance monitoring
+   - Security event alerting
+
+WON'T HAVE (Out of scope for current version)
+1. Integration with existing Blackboard system
+2. Real-time collaboration features
+3. Mobile application
+4. Advanced content formatting in questions
+5. Video/audio question types
+6. Machine learning for answer evaluation
+7. Biometric verification
+8. GDPR compliance features (for current version)
+9. Redis caching
+10. Database connection pooling
+
+# MoSCoW Analysis for Quiz Application
+
+## MUST HAVE (Essential Core Features)
+
+| Requirement | Description | Justification |
+|-------------|-------------|---------------|
+| Authentication System | Dual-role login system supporting distinct academic and student access with separate privileges | Fundamental security requirement for maintaining system integrity and user role separation |
+| Question Management | Interface for academics to create true/false and multiple-choice questions with feedback mechanisms for incorrect answers | Forms the core assessment functionality; essential for basic quiz creation and learning support |
+| Quiz Timing Controls | System to enforce quiz availability windows and manage duration limits | Critical for maintaining assessment integrity and ensuring fair testing conditions |
+| Student Assignment | Framework to link specific students to designated quizzes with access control | Essential for managing course-specific assessments and controlling quiz access |
+| Basic Security | IP-based restrictions and machine-specific access controls with validation | Crucial for preventing unauthorized access and ensuring secure test environments |
+| Result Management | Automated scoring system with result display functionality for both roles | Fundamental for assessment completion and feedback loop |
+| Advanced Security | Access code protection and launch ticket system for quiz access | Essential for preventing unauthorized access and maintaining session security |
+
+## SHOULD HAVE (Important Features)
+
+| Requirement | Description | Justification |
+|-------------|-------------|---------------|
+| Advanced Question Types | Support for questions requiring manual grading and partial credit allocation | Enhances assessment flexibility and allows for complex evaluation scenarios |
+| Automated Marking | System for detecting identical answers and ensuring consistent scoring across submissions | Improves grading efficiency and maintains assessment fairness |
+| Question Versioning | System for tracking question history and managing soft deletions | Important for content management and maintaining question bank integrity |
+| Student Identification | Photo display and management system during quiz sessions | Enhances security through visual verification of test-taker identity |
+
+## COULD HAVE (Desirable Features)
+
+| Requirement | Description | Justification |
+|-------------|-------------|---------------|
+| Feature Flags | System for controlled feature deployment and testing | Enables gradual rollout of new functionality and better risk management |
+| Advanced Analytics | Comprehensive metrics for quiz performance and student progress tracking | Provides valuable insights for academic staff and improves assessment quality |
+| Cache Management | ETag-based request optimization and performance enhancements | Improves system responsiveness and user experience |
+| Audit Logging | Detailed tracking of security events and user actions | Enhances system monitoring and security incident response |
+| Two-Factor Auth | Additional authentication layer for enhanced security | Provides extra protection for sensitive operations |
+| Monitoring Tools | Performance monitoring and system health tracking | Ensures system reliability and early problem detection |
+
+## WON'T HAVE (Out of Scope)
+
+| Requirement | Description | Justification |
+|-------------|-------------|---------------|
+| Real-time Collaboration | Simultaneous multi-user quiz interaction features | Not essential for core assessment functionality |
+| Mobile Application | Dedicated mobile platform version | Web application meets current needs adequately |
+| Rich Media Questions | Support for video/audio question formats | Beyond scope of basic assessment requirements |
+| Advanced Formatting | Complex content formatting in questions | Simple formatting sufficient for current needs |
+| ML-Based Evaluation | Automated answer evaluation using machine learning | Complexity outweighs benefit for current version |
+| Biometric Verification | Advanced biological identification methods | Current security measures are sufficient |
+| GDPR Compliance | Comprehensive data protection features | Reserved for future version with international deployment |
+| Advanced Caching | Redis-based caching implementation | Standard caching meets current performance needs |
+| Connection Pooling | Advanced database connection management | Current database handling is adequate |

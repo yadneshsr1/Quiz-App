@@ -1,0 +1,154 @@
+Chapter 4 — Design
+4.0 Chapter Overview
+
+Briefly restate the goal: replace Blackboard’s quiz setting/admin with a faster, more secure system; outline the design artefacts in this chapter (UI/UX flows, system architecture, data model, security design, and design trade-offs). Anchor this to your project brief.
+
+4.1 User Interface & User Experience Design
+
+4.1.1 Design philosophy. State principles (simplicity, clarity, consistency, accessibility, speed). Mention role-specific UIs (academic vs student) to reduce clutter and errors. (1–2 paragraphs)
+4.1.2 Primary user journeys.
+
+Student: discover eligible quizzes → launch (access code/IP) → start (launch ticket) → take → submit → view result. (Add wireframes or mockups.)
+
+Academic: create quiz → add questions → set window/IP/assignment → publish → monitor submissions → export/results. (Add screen flow.)
+4.1.3 Navigation map. Insert a figure showing screen/route flow (e.g., “StudentDashboard → QuizTaking → Result”). Give it a caption and cross-reference later. (Figure 4.1)
+4.1.4 Accessibility & validation. Note font/contrast choices, keyboard navigation, client-side hints, server-side enforcement to prevent UI-only security. (1 paragraph)
+
+4.2 System Architecture
+
+4.2.1 High-level architecture (MERN).
+
+Client (React): role-aware dashboards, QuizTaking, custom hooks, feature flags.
+
+API (Express): auth, quiz lifecycle, results; layered middleware (authZ, launch ticket, IP filter, time window).
+
+Data (MongoDB): Users, Quizzes, Questions, Results, (optional) QuestionVersions; indexes & constraints.
+Include a block diagram (client ↔ middleware pipeline ↔ controllers ↔ Mongo). (Figure 4.2)
+
+4.2.2 Key request/response flows (sequence diagrams).
+
+<!-- Quiz Management -->
+
+Provide 3 small sequences:
+
+Eligibility (GET /api/quizzes/eligible),
+
+Secure Launch (POST /quizzes/:id/launch with access code/IP/assignment),
+
+Start & Deliver (GET /quizzes/:id/start with x-quiz-launch). (Figures 4.3–4.5)
+
+4.2.3 API surface (summary table).
+A concise table with route, method, purpose, preconditions (auth, ticket, IP, window), and responses. (Table 4.1)
+
+4.2.4 Data model & persistence.
+Describe each collection and why:
+
+Users (auth, role, student/academic fields).
+
+Quizzes (title, module, start/end, accessCodeHash, allowedIpCidrs, assignedStudentIds).
+
+Questions (quizId, options, answerKey, points, soft-delete).
+
+Results (unique {quizId, studentId}, answers, score, timeSpent).
+
+(Optional) QuestionVersions for audit.
+Add a neat ER/NoSQL schematic; list critical indexes (e.g., unique {quizId, studentId}). (Figure 4.6 / Table 4.2)
+
+4.2.5 Security design (server-first).
+Explain the defence-in-depth choices and where they’re enforced:
+
+Auth & roles (JWT).
+
+Access code → launch ticket (short-lived JWT) → start.
+
+IP/CIDR allow-listing.
+
+Time window with clock-skew tolerance.
+
+Atomic submissions and result uniqueness.
+
+Audit logging (events, IP, UA).
+Clarify design intent vs current gaps (CORS policy, timer sync, persistent single-use tickets). (1–2 pages)
+
+4.2.6 Non-functional design.
+Performance (indexes, minimal payloads), scalability (stateless API, horizontal scale), observability (structured logs), configuration (env-based flags), and privacy. (½ page)
+
+4.3 Design for Testability
+
+Fixtures/seed data, isolated services (middleware testability), deterministic clocks for time-window tests, DB reset hooks. (½ page)
+
+4.4 Design Rationale & Trade-offs
+
+NoSQL vs SQL (schema agility for evolving quiz items).
+
+Embedded vs referenced questions (performance vs evolution/versioning).
+
+Web app vs desktop (reach, validation tooling).
+
+Security strictness vs usability (e.g., IP ranges, clock tolerance).
+Map back to requirements in your abstract (timed delivery, machine/IP restriction, anonymous marking, partial marks). (Add a traceability table: Requirement → Design element.)
+
+Chapter 5 — Implementation & Testing
+5.1 Toolchain & Environment
+
+Stacks, versions, repo layout, deployment model (dev/prod), env vars (token secrets, TTL, clock skew, allowed origins, CIDRs). (Table 5.1)
+
+5.2 Backend Implementation (Express/Node)
+
+5.2.1 Server setup & middleware pipeline. CORS, headers, JWT auth, RBAC, requireLaunchTicket, IP filter, controllers. (Code snippets for each gate.)
+5.2.2 Controllers (quiz, result, auth).
+
+isQuizOpen(now, skew) enforcement points,
+
+signLaunchTicket (payload, TTL, binding),
+
+Atomic findOneAndUpdate with unique index. (Short, annotated snippets.)
+
+5.2.3 Security hardening implemented.
+
+Migrate plaintext passwords → bcrypt hash + policies + lockout,
+
+Restrict CORS to known origins,
+
+Persist single-use ticket jti (e.g., Redis/Mongo),
+
+Server-time synced exam timer contract (API pings or signed server-time beacons). (State what you implemented vs backlog.)
+
+5.3 Frontend Implementation (React)
+
+Routing, protected routes by role, StudentDashboard, AcademicDashboard, QuizTaking, custom hooks (useAvailableQuizzes, useQuizSubmission), cache invalidation events, accessible components, responsive layout. Describe the timer sync approach you implemented. (Screenshots encouraged.)
+
+5.4 Database Implementation (MongoDB/Mongoose)
+
+Schemas with validators, compound/unique indexes, soft-delete strategy, audit/versioning (if included), and migration notes. (Schema excerpts + index declarations.)
+
+5.5 Deployment & Configuration
+
+Secrets management, environment profiles, logging/monitoring, HTTPS/TLS, rate limiting, backup/restore, and data retention choices. (½ page)
+
+5.6 Testing Strategy & Evidence
+
+5.6.1 Unit tests. Utilities (time window), IP checks, ticket validation, scoring.
+5.6.2 Integration/API tests. Endpoints with middleware gates (auth → ticket → IP → time).
+5.6.3 End-to-end (E2E). Student launch → submit; Academic create → publish → view results.
+5.6.4 Security tests.
+
+Timer tamper attempts (prove server wins),
+
+CORS origin denial,
+
+Duplicate submission races (prove atomicity),
+
+IP escape attempts,
+
+Injection attempts (query operators).
+5.6.5 Data reset & fixtures. Deterministic seeds, DB wipe per test suite.
+Include a coverage summary and selected output screenshots/tables. (Tables 5.2–5.4; Figures 5.2–5.3)
+
+5.7 Results, Limitations & Further Work
+
+Summarise what works (against abstract’s goals), measured performance (e.g., request latency under load), remaining risks (e.g., ticket persistence choice, offline mode), and prioritized roadmap. (1 page)
+
+5.8 Chapter Summary
+
+A short recap tying implementation to the design and requirements.

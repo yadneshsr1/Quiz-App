@@ -37,8 +37,7 @@ exports.submitQuiz = async function (req, res, next) {
 
     // Get questions for this quiz from the separate Question model
     const questions = await Question.find({ 
-      quizId: quizId, 
-      deletedAt: null 
+      quizId: quizId
     }).sort({ createdAt: 1 });
 
     log('submit.questions', { count: questions.length });

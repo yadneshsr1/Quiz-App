@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-// import { CONFIG } from "../config";
 import {
   Table,
   TableBody,
@@ -10,35 +9,34 @@ import {
   Paper,
   IconButton,
   TextField,
+  Chip,
   Tooltip,
   TablePagination,
   Box,
   Toolbar,
   Typography,
   Button,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import {
   Edit as EditIcon,
   Delete as DeleteIcon,
+  FilterList as FilterIcon,
   Search as SearchIcon,
 } from "@mui/icons-material";
 import { useQuery, useMutation, useQueryClient } from "react-query";
 
-const fetchQuestions = async ({ quizId, search }) => {
+const fetchQuestions = async ({ quizId, search, tags, status }) => {
   try {
     if (!quizId) {
       throw new Error("Quiz ID is required");
     }
 
-    console.log("Fetching questions for quiz ID:", quizId);
+    console.log("Fetching quiz with ID:", quizId);
 
-    // Build query parameters
-    const params = new URLSearchParams();
-    if (search) params.append("search", search);
-
-    // Temporarily hardcode the correct endpoint for testing
     const response = await fetch(
-      `/api/quizzes/${quizId}/questions?${params.toString()}`,
+      `http://localhost:5000/api/quizzes/${quizId}`,
       {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("token")}`,
@@ -49,16 +47,26 @@ const fetchQuestions = async ({ quizId, search }) => {
 
     if (!response.ok) {
       const errorData = await response.json();
-      throw new Error(errorData.error || "Failed to fetch questions");
+      throw new Error(errorData.error || "Failed to fetch quiz");
     }
 
-    const questions = await response.json();
-    console.log("Fetched questions:", questions);
+    const quiz = await response.json();
+    console.log("Fetched quiz with questions:", quiz);
+
+    // Return the questions array, filtering based on search if provided
+    let questions = quiz.questions || [];
+
+    if (search) {
+      questions = questions.filter((q) =>
+        q.questionText.toLowerCase().includes(search.toLowerCase())
+      );
+    }
 
     return questions.map((q, index) => ({
       ...q,
-      id: q._id || index,
-      title: q.title, // Use title for display
+      id: q._id || index, // Fallback to index if _id is not available
+      title: q.questionText, // Map questionText to title for display
+      status: "published", // Default status
     }));
   } catch (error) {
     console.error("Error fetching questions:", error);
@@ -70,13 +78,16 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [search, setSearch] = useState("");
+  const [filterAnchorEl, setFilterAnchorEl] = useState(null);
+  const [selectedTags, setSelectedTags] = useState([]);
+  const [selectedStatus, setSelectedStatus] = useState("");
+
   const queryClient = useQueryClient();
 
   const deleteMutation = useMutation(
     async (questionId) => {
-      // Temporarily hardcode the correct endpoint for testing
       const response = await fetch(
-        `/api/questions/${questionId}`,
+        `http://localhost:5000/api/questions/${questionId}`,
         {
           method: "DELETE",
           headers: {
@@ -107,15 +118,17 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
     isLoading,
     error,
   } = useQuery(
-    ["questions", quizId, search, refreshTrigger],
+    ["questions", quizId, search, selectedTags, selectedStatus, refreshTrigger],
     () =>
       fetchQuestions({
         quizId,
         search,
+        tags: selectedTags,
+        status: selectedStatus,
       }),
     {
       keepPreviousData: true,
-      enabled: !!quizId,
+      enabled: !!quizId, // Only run the query if quizId is provided
     }
   );
 
@@ -135,10 +148,6 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
     );
   }
 
-  if (isLoading) {
-    return <Typography>Loading questions...</Typography>;
-  }
-
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -153,9 +162,19 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
     setPage(0);
   };
 
+  const handleFilterClick = (event) => {
+    setFilterAnchorEl(event.currentTarget);
+  };
 
+  const handleFilterClose = () => {
+    setFilterAnchorEl(null);
+  };
 
-
+  const handleStatusFilter = (status) => {
+    setSelectedStatus(status);
+    handleFilterClose();
+    setPage(0);
+  };
 
   const handleDelete = async (questionId) => {
     try {
@@ -163,7 +182,48 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
         return;
       }
 
-      await deleteMutation.mutateAsync(questionId);
+      // First fetch the current quiz
+      const getResponse = await fetch(
+        `http://localhost:5000/api/quizzes/${quizId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      if (!getResponse.ok) {
+        throw new Error("Failed to fetch quiz");
+      }
+      const quiz = await getResponse.json();
+
+      // Filter out the question to delete
+      const updatedQuestions = (quiz.questions || []).filter(
+        (q) => q._id !== questionId && q.id !== questionId
+      );
+
+      // Update the quiz with the new questions array
+      const updateResponse = await fetch(
+        `http://localhost:5000/api/quizzes/${quizId}`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("token")}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            ...quiz,
+            questions: updatedQuestions,
+          }),
+        }
+      );
+
+      if (!updateResponse.ok) {
+        throw new Error("Failed to delete question");
+      }
+
+      // Refresh the questions list
+      queryClient.invalidateQueries(["questions", quizId]);
     } catch (error) {
       console.error("Error deleting question:", error);
       alert("Failed to delete question: " + error.message);
@@ -187,10 +247,12 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
             startIcon={<EditIcon />}
             onClick={() =>
               onQuestionSelect({
-                title: "",
+                questionText: "",
                 options: [""],
-                answerKey: 0,
+                correctAnswerIndex: 0,
                 feedback: "",
+                tags: [],
+                status: "draft",
                 points: 1,
               })
             }
@@ -211,17 +273,36 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
             sx={{ width: 300 }}
           />
         </Box>
-
+        <Tooltip title="Filter list">
+          <IconButton onClick={handleFilterClick}>
+            <FilterIcon />
+          </IconButton>
+        </Tooltip>
       </Toolbar>
 
-
+      <Menu
+        anchorEl={filterAnchorEl}
+        open={Boolean(filterAnchorEl)}
+        onClose={handleFilterClose}
+      >
+        <MenuItem onClick={() => handleStatusFilter("")}>All</MenuItem>
+        <MenuItem onClick={() => handleStatusFilter("draft")}>Draft</MenuItem>
+        <MenuItem onClick={() => handleStatusFilter("published")}>
+          Published
+        </MenuItem>
+        <MenuItem onClick={() => handleStatusFilter("archived")}>
+          Archived
+        </MenuItem>
+      </Menu>
 
       <TableContainer>
         <Table>
           <TableHead>
             <TableRow>
               <TableCell>Title</TableCell>
+              <TableCell>Status</TableCell>
               <TableCell>Points</TableCell>
+              <TableCell>Tags</TableCell>
               <TableCell align="right">Actions</TableCell>
             </TableRow>
           </TableHead>
@@ -231,9 +312,32 @@ const QuestionsTable = ({ quizId, onQuestionSelect, refreshTrigger }) => {
               .map((question) => (
                 <TableRow key={question.id || question._id}>
                   <TableCell>
-                    {question.title}
+                    {question.title || question.questionText}
+                  </TableCell>
+                  <TableCell>
+                    <Chip
+                      label={question.status || "published"}
+                      color={
+                        question.status === "published" || !question.status
+                          ? "success"
+                          : question.status === "draft"
+                          ? "default"
+                          : "error"
+                      }
+                      size="small"
+                    />
                   </TableCell>
                   <TableCell>{question.points || 1}</TableCell>
+                  <TableCell>
+                    {(question.tags || []).map((tag) => (
+                      <Chip
+                        key={tag}
+                        label={tag}
+                        size="small"
+                        sx={{ mr: 0.5 }}
+                      />
+                    ))}
+                  </TableCell>
                   <TableCell align="right">
                     <Tooltip title="Edit">
                       <IconButton

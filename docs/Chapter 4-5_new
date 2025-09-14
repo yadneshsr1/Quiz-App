@@ -1,0 +1,173 @@
+Chapter 4: Design
+
+4.1 System Architecture
+
+    High-Level MERN Stack Architecture
+
+    Show your clean separation of client/server
+    Highlight the MongoDB schema design
+    Include your React component hierarchy
+    Use your existing architecture diagram from technical writeup
+
+    Security Design Patterns
+
+    Multi-layer authentication (JWT + Launch Tickets)
+    IP filtering with CIDR support (from ipcheck.js)
+    Time window enforcement
+    Persistent ticket tracking system
+
+4.2 Data Model Design
+
+    Core Entities (based on your models/)
+
+    User (Academic/Student distinction)
+    Quiz (with access controls)
+    Question (with versioning)
+    Result (with atomic constraints)
+    UsedTicket (with TTL indexes)
+
+    Relationships and Constraints
+
+    Your compound indexes
+    Unique constraints
+    Reference integrity
+
+4.3 Component Design
+
+    Frontend Components (from your src/components/)
+
+    Role-based dashboards
+    Quiz taking interface
+    Question management
+    Student photo display
+
+    Custom Hooks (from your hooks/)
+
+    useAvailableQuizzes
+    useQuizSubmission
+    State management patterns
+
+4.4 Security Architecture
+
+    Authentication Flow
+
+    JWT implementation
+    Launch ticket system
+    Access code validation
+
+    Access Control
+
+    Role-based authorization
+    IP filtering
+    Time window enforcement
+
+Chapter 5: Implementation
+
+5.1 Development Environment
+
+    Technology Stack
+
+    Node.js/Express backend
+    React frontend
+    MongoDB database
+    Testing frameworks (Jest)
+
+    Development Tools
+
+    Version control
+    Testing setup
+    Environment configurations
+
+5.2 Core Features Implementation
+
+    Quiz Management
+
+    Quiz creation (quizController.js)
+    Question versioning
+    Results handling (resultController.js)
+
+    Security Implementation
+
+    Authentication (authController.js)
+    Launch ticket system (ticketManager.js)
+    IP filtering (ipcheck.js)
+
+    Student Features
+
+    Quiz access workflow
+    Photo display implementation
+    Submission handling
+
+5.3 Database Implementation
+
+    Schema Implementation
+
+    Model definitions
+    Index optimization
+    Validation rules
+
+    Data Integrity
+
+    Atomic operations
+    Race condition prevention
+    Duplicate submission prevention
+
+The database architecture of the Quiz Application utilizes MongoDB's document model, implementing five core schemas: Quiz, Question, Result, User, and UsedTicket. Each schema incorporates specific validation rules and indexes to maintain data integrity while optimizing query performance. The architecture employs a hybrid approach where Questions can exist both as embedded documents within Quiz schemas and as separate referenced documents, providing flexibility for different operational requirements.
+
+The Question schema implements a streamlined design with essential fields including title, options array, answerKey, and points allocation. The schema includes compound indexes on quizId for efficient retrieval and text indexes on title fields to support search functionality. Validation rules enforce data consistency through required field constraints, minimum value validation for numeric fields, and enumerated status values. The implementation supports question categorization through tags and maintains operational states through status enumeration including draft, published, and archived states.
+
+The Result schema captures comprehensive submission data using MongoDB's Map type for answer storage, enabling flexible question-answer associations while maintaining type safety. A unique compound index on studentId and quizId prevents duplicate submissions at the database level, ensuring assessment integrity. The schema includes extensive validation with score boundaries, required timing information, and automatic timestamp generation. Server-side constraints maintain data consistency across concurrent submission operations without requiring explicit transaction management.
+
+The UsedTicket schema implements sophisticated access control through time-based constraints and comprehensive metadata tracking. The schema features a TTL index for automatic cleanup of expired tickets, eliminating the need for manual purging operations. Compound indexes support efficient querying patterns for security auditing and analytics, with specialized indexes optimized for quiz-user associations and temporal queries. The implementation includes detailed metadata capture including user agent strings and IP addresses to support security monitoring and forensic analysis.
+
+To prevent race conditions, the implementation leverages MongoDB's atomic document operations and unique constraints rather than explicit transactions. This approach ensures consistency during concurrent operations, particularly critical during quiz submissions and ticket validation processes. The system employs unique indexes as primary mechanisms for preventing duplicate operations, with the UsedTicket model utilizing database-level constraint enforcement to handle concurrent access attempts. The Result schema's compound unique index provides race-condition protection for student submissions without requiring application-level locking mechanisms.
+
+Data integrity is maintained through comprehensive validation at both schema and application levels. The implementation prioritizes operational efficiency through direct document operations rather than complex historical tracking mechanisms. Compound indexes optimize query patterns across all schemas, with the Question model supporting both embedded and referenced document approaches depending on operational requirements. The UsedTicket schema implements multiple specialized indexes supporting security auditing, analytics queries, and automated cleanup operations, ensuring system performance remains optimal as data volume increases.
+
+5.4 Testing Strategy
+
+    Unit Testing
+
+    Component tests
+    Utility function tests
+    Security feature tests
+
+    Integration Testing
+
+    API endpoint testing
+    Authentication flow testing
+    Quiz submission testing
+
+    Security Testing
+
+    Access control testing
+    Token validation
+    IP filtering tests
+
+5.5 Performance Considerations
+
+    Caching Strategy
+
+    HTTP caching
+    Data caching
+    Cache invalidation
+
+    Query Optimization
+
+    Index usage
+    Compound queries
+    Projection optimization
+
+5.6 Security Measures
+
+    Authentication Security
+
+    Token management
+    Password handling
+    Session control
+
+    Access Control Implementation
+
+    Role enforcement
+    IP restriction
+    Time window validation

@@ -1,0 +1,94 @@
+\chapter{Design}
+
+The design of the quiz management system is 
+centered on modularity, scalability, and security, 
+ensuring that both academic staff and students can 
+interact with the platform efficiently and securely. 
+The system adopts a client-server architecture, with a
+ React-based frontend and a Node.js/Express backend, 
+ communicating via RESTful APIs. 
+ The design leverages best practices in web application development, including separation of concerns, reusable components, and robust authentication mechanisms.
+
+
+\begin{itemize}
+    \item \textbf{Frontend Components:}
+    \begin{itemize}
+        \item \textit{Login Page:} Handles authentication for both user roles.
+        \item \textit{Dashboard Pages:} Separate dashboards for academic staff and students, displaying relevant quizzes and analytics.
+        \item \textit{Quiz Management:} Components for creating, editing, and assigning quizzes.
+        \item \textit{Question Editor:} Interface for adding and managing quiz questions.
+        \item \textit{Quiz Taking:} Student interface for attempting quizzes, with timer and submission features.
+        \item \textit{Results and Analytics:} Displays quiz results and performance metrics.
+    \end{itemize}
+    \item \textbf{Backend Modules:}
+    \begin{itemize}
+        \item \textit{Authentication Controller:} Manages login, session, and role-based access.
+        \item \textit{Quiz Controller:} Handles quiz creation, assignment, and timing logic.
+        \item \textit{Question Controller:} Manages question CRUD operations and versioning.
+        \item \textit{Result Controller:} Processes submissions and computes results.
+        \item \textit{Security Middleware:} Enforces IP restrictions, access codes, and launch tickets.
+        \item \textit{Database Models:} Defines schemas for users, quizzes, questions, and results.
+    \end{itemize}
+\end{itemize}
+
+
+
+\section{Database Design}
+
+The system implements a MongoDB document database with Mongoose ODM for schema validation and relationship management. The schema design utilizes ObjectId references for collection relationships and compound indexes for query optimization.
+
+\subsection{Core Collections}
+
+\begin{itemize}
+    \item \textbf{User Schema:} Implements role-based access with enum constraints (academic|student). Contains sparse indexes on regNo for students and department references for academics. Includes photograph field for binary photo data and unique constraints on username/email fields.
+    
+    \item \textbf{Quiz Schema:} Embeds question subdocuments within quiz documents to minimize database queries. Implements temporal access control via startTime/endTime fields. Features IP CIDR filtering through allowedIpCidrs array and bcrypt-hashed access codes. Uses ObjectId arrays for assignedStudentIds with User collection references.
+    
+    \item \textbf{Question Schema:} Standalone collection with foreign key references to Quiz via quizId field. Implements versioning through status enumeration (draft|published|archived) and maintains answerKey as zero-indexed integer. Includes points weighting and tag-based categorization.
+    
+    \item \textbf{QuestionVersion Schema:} Audit trail implementation using snapshot field containing Mixed-type historical question data. Compound index on questionId + createdAt enables efficient version history queries.
+    
+    \item \textbf{Result Schema:} Implements Map data type for answers with integer values representing option indices. Features compound unique index on (quizId, studentId) preventing duplicate submissions. Includes performance metrics via timeSpent field and percentage-based scoring.
+\end{itemize}
+
+\subsection{Index Strategy}
+
+Critical indexes include: User(username, email), Quiz(moduleCode, startTime), Question(quizId, status), Result(quizId + studentId), and QuestionVersion(questionId + createdAt). These optimize authentication queries, temporal access controls, and result aggregation operations.
+
+\section{Non-Functional Design}
+
+\subsection{Performance Optimization}
+
+The system implements multi-layered performance optimization strategies. Database performance relies on strategic indexing including compound indexes on frequently queried fields: (quizId + studentId) for result deduplication, (questionId + createdAt) for version history, and sparse indexes on User.regNo for student-specific queries. Query optimization utilizes MongoDB aggregation pipelines for complex analytics operations and selective field projection to minimize network payload.
+
+HTTP-level caching employs ETag-based conditional requests through custom middleware that intercepts response objects, comparing If-None-Match headers with generated ETags to return 304 Not Modified responses for unchanged resources. This reduces bandwidth consumption particularly for static resources like student photographs and quiz metadata. The cacheMiddleware implements response interception patterns to inject cache headers automatically across all applicable endpoints.
+
+Payload minimization strategies include selective population of referenced documents using Mongoose's populate() with field selection, JSON response compression, and pagination implementation for large result sets. Photo data transmission utilizes binary streaming with Content-Type validation and size restrictions to prevent memory exhaustion.
+
+\subsection{Scalability Architecture}
+
+The RESTful API design maintains statelessness through JWT-based authentication, eliminating server-side session storage requirements. Each request contains complete authentication context via signed tokens, enabling horizontal scaling across multiple application instances without session affinity constraints.
+
+Database scaling leverages MongoDB's horizontal partitioning capabilities through quiz-based sharding strategies. The schema design supports read replicas for analytics queries while maintaining write consistency for submission operations. Connection pooling through Mongoose prevents connection exhaustion under high concurrent load.
+
+Load balancing compatibility is ensured through stateless request handling and environment-based configuration management, allowing dynamic scaling of application instances behind reverse proxies without state synchronization requirements.
+
+\subsection{Observability and Monitoring}
+
+Structured logging implementation utilizes JSON-formatted log entries with standardized schemas for automated parsing and analysis. The logger utility implements timestamp normalization, label-based categorization, and fallback mechanisms for circular reference handling during JSON serialization.
+
+Security event logging through dedicated securityLogger captures authentication attempts, IP filtering violations, and access control breaches with contextual metadata including user identifiers, source IPs, and request parameters. This enables security incident response and audit trail reconstruction.
+
+Application monitoring incorporates request tracing through middleware chains, performance metric collection via timing instrumentation, and error tracking with stack trace preservation for debugging purposes.
+
+\subsection{Configuration Management}
+
+Environment-based feature flag system enables runtime behavior modification without code deployment. The featureFlags configuration implements hierarchical flag management with environment-specific overrides, supporting gradual feature rollouts and A/B testing scenarios.
+
+Configuration includes environment variable mapping for both backend (NODE_ENV variables) and frontend (REACT_APP prefixed) settings, enabling deployment-specific customization of feature availability. Flag evaluation occurs at request time, supporting dynamic feature toggling for maintenance scenarios.
+
+\subsection{Privacy and Security}
+
+Data privacy implementation includes selective field exclusion in API responses (password field removal via Mongoose select operations), photograph access control through role-based middleware, and IP-based geographic access restrictions using CIDR notation validation.
+
+The ipcheck utility implements IPv4/IPv6 CIDR range validation for location-based access control, supporting institutional network restrictions and preventing unauthorized remote access. Privacy controls extend to audit log sanitization, removing sensitive personal information while preserving operational metadata for security analysis.

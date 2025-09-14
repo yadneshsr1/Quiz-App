@@ -111,8 +111,7 @@ router.get(
 
       // Get questions for this quiz
       const questions = await Question.find({ 
-        quizId: quizId, 
-        deletedAt: null 
+        quizId: quizId
       }).sort({ createdAt: 1 });
 
       // Get all results for this quiz

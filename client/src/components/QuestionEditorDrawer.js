@@ -14,24 +14,15 @@ import {
   MenuItem,
   Chip,
   IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  ListItemSecondaryAction,
   Divider,
   Alert,
   Stack,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
 } from "@mui/material";
 import {
   Close as CloseIcon,
   Add as AddIcon,
-  RestoreFromTrash as RestoreIcon,
 } from "@mui/icons-material";
-import { useMutation, useQueryClient, useQuery } from "react-query";
+import { useMutation, useQueryClient } from "react-query";
 
 function TabPanel({ children, value, index, ...other }) {
   return (
@@ -46,20 +37,6 @@ function TabPanel({ children, value, index, ...other }) {
   );
 }
 
-const fetchVersions = async (questionId) => {
-  if (!questionId) return [];
-  const response = await fetch(
-            `/api/questions/${questionId}/versions`,
-    {
-      headers: {
-        Authorization: `Bearer ${localStorage.getItem("token")}`,
-        "Content-Type": "application/json",
-      },
-    }
-  );
-  if (!response.ok) throw new Error("Failed to fetch versions");
-  return response.json();
-};
 
 const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => {
   const [tab, setTab] = useState(0);
@@ -71,18 +48,9 @@ const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => 
     feedback: "",
   });
 
-  const [restoreDialogOpen, setRestoreDialogOpen] = useState(false);
-  const [selectedVersion, setSelectedVersion] = useState(null);
 
   const queryClient = useQueryClient();
 
-  const { data: versions = [] } = useQuery(
-    ["versions", question?._id],
-    () => fetchVersions(question?._id),
-    {
-      enabled: !!question?._id,
-    }
-  );
 
   useEffect(() => {
     if (question) {
@@ -159,32 +127,6 @@ const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => 
     }
   );
 
-  const restoreVersionMutation = useMutation(
-    async (versionId) => {
-      const response = await fetch(
-        `/api/questions/${question._id}/versions/${versionId}/restore`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("token")}`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to restore version");
-      }
-      return response.json();
-    },
-    {
-      onSuccess: () => {
-        queryClient.invalidateQueries(["questions", quizId]);
-        queryClient.invalidateQueries(["versions", question._id]);
-        onUpdate();
-      },
-    }
-  );
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -219,17 +161,6 @@ const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => 
 
 
 
-  const handleRestoreVersion = async () => {
-    if (selectedVersion) {
-      try {
-        await restoreVersionMutation.mutateAsync(selectedVersion._id);
-        setRestoreDialogOpen(false);
-      } catch (error) {
-        console.error("Error restoring version:", error);
-        alert("Failed to restore version: " + error.message);
-      }
-    }
-  };
 
   return (
     <Drawer
@@ -253,7 +184,6 @@ const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => 
         <Tab label="Content" />
         <Tab label="Answer & Scoring" />
         <Tab label="Feedback" />
-        {question?._id && <Tab label="History" />}
       </Tabs>
 
       <Box component="form" onSubmit={handleSubmit} sx={{ overflow: "auto" }}>
@@ -342,31 +272,6 @@ const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => 
           />
         </TabPanel>
 
-        {question?._id && (
-          <TabPanel value={tab} index={3}>
-            <List>
-              {versions.map((version) => (
-                <ListItem key={version._id}>
-                  <ListItemText
-                    primary={new Date(version.createdAt).toLocaleString()}
-                    secondary={`Version ${version._id}`}
-                  />
-                  <ListItemSecondaryAction>
-                    <IconButton
-                      edge="end"
-                      onClick={() => {
-                        setSelectedVersion(version);
-                        setRestoreDialogOpen(true);
-                      }}
-                    >
-                      <RestoreIcon />
-                    </IconButton>
-                  </ListItemSecondaryAction>
-                </ListItem>
-              ))}
-            </List>
-          </TabPanel>
-        )}
 
         <Box sx={{ p: 2, borderTop: 1, borderColor: "divider" }}>
           <Button 
@@ -382,22 +287,6 @@ const QuestionEditorDrawer = ({ open, question, onClose, onUpdate, quizId }) => 
         </Box>
       </Box>
 
-      <Dialog
-        open={restoreDialogOpen}
-        onClose={() => setRestoreDialogOpen(false)}
-      >
-        <DialogTitle>Restore Version</DialogTitle>
-        <DialogContent>
-          Are you sure you want to restore this version? Current changes will be
-          saved as a new version.
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRestoreDialogOpen(false)}>Cancel</Button>
-          <Button onClick={handleRestoreVersion} variant="contained">
-            Restore
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Drawer>
   );
 };

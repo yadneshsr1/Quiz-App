@@ -1,5 +1,4 @@
 const Question = require("../models/Question");
-const QuestionVersion = require("../models/QuestionVersion");
 
 exports.createQuestion = function (req, res, next) {
   const question = new Question({
@@ -10,12 +9,6 @@ exports.createQuestion = function (req, res, next) {
   question
     .save()
     .then((savedQuestion) => {
-      return QuestionVersion.create({
-        questionId: savedQuestion._id,
-        snapshot: savedQuestion.toObject(),
-      }).then(() => savedQuestion);
-    })
-    .then((savedQuestion) => {
       res.status(201).json(savedQuestion);
     })
     .catch((error) => {
@@ -25,27 +18,12 @@ exports.createQuestion = function (req, res, next) {
 };
 
 exports.updateQuestion = function (req, res, next) {
-  let questionRef;
-  Question.findById(req.params.id)
+  Question.findByIdAndUpdate(req.params.id, req.body, { new: true })
     .then((question) => {
       if (!question) {
         return res.status(404).json({ error: "Question not found" });
       }
-      questionRef = question;
-      return QuestionVersion.create({
-        questionId: question._id,
-        snapshot: question.toObject(),
-      });
-    })
-    .then(() => {
-      if (!questionRef) return;
-      Object.assign(questionRef, req.body);
-      return questionRef.save();
-    })
-    .then((updatedQuestion) => {
-      if (updatedQuestion) {
-        res.json(updatedQuestion);
-      }
+      res.json(question);
     })
     .catch((error) => {
       console.error("Error updating question:", error);
@@ -75,17 +53,13 @@ exports.quickUpdate = function (req, res, next) {
     });
 };
 
-exports.softDelete = function (req, res, next) {
-  Question.findByIdAndUpdate(
-    req.params.id,
-    { deletedAt: new Date() },
-    { new: true }
-  )
+exports.deleteQuestion = function (req, res, next) {
+  Question.findByIdAndDelete(req.params.id)
     .then((question) => {
       if (!question) {
         return res.status(404).json({ error: "Question not found" });
       }
-      res.json(question);
+      res.json({ message: "Question deleted successfully" });
     })
     .catch((error) => {
       console.error("Error deleting question:", error);
@@ -93,120 +67,15 @@ exports.softDelete = function (req, res, next) {
     });
 };
 
-exports.restoreQuestion = function (req, res, next) {
-  Question.findByIdAndUpdate(req.params.id, { deletedAt: null }, { new: true })
-    .then((question) => {
-      if (!question) {
-        return res.status(404).json({ error: "Question not found" });
-      }
-      res.json(question);
-    })
-    .catch((error) => {
-      console.error("Error restoring question:", error);
-      res.status(400).json({ error: "Failed to restore question" });
-    });
-};
 
-exports.getVersions = function (req, res, next) {
-  QuestionVersion.find({
-    questionId: req.params.id,
-  })
-    .sort("-createdAt")
-    .then((versions) => {
-      res.json(versions);
-    })
-    .catch((error) => {
-      console.error("Error fetching versions:", error);
-      res.status(500).json({ error: "Failed to fetch versions" });
-    });
-};
 
-exports.restoreVersion = function (req, res, next) {
-  let versionData;
-  let questionRef;
 
-  QuestionVersion.findById(req.params.versionId)
-    .then((version) => {
-      if (!version || version.questionId.toString() !== req.params.id) {
-        return res.status(404).json({ error: "Version not found" });
-      }
-      versionData = version;
-      return Question.findById(req.params.id);
-    })
-    .then((question) => {
-      if (!question) {
-        return res.status(404).json({ error: "Question not found" });
-      }
-      questionRef = question;
-      return QuestionVersion.create({
-        questionId: question._id,
-        snapshot: question.toObject(),
-      });
-    })
-    .then(() => {
-      if (!questionRef || !versionData) return;
-      const restoredData = JSON.parse(JSON.stringify(versionData.snapshot));
-      delete restoredData._id;
-      delete restoredData.__v;
-      Object.assign(questionRef, restoredData);
-      return questionRef.save();
-    })
-    .then((savedQuestion) => {
-      if (savedQuestion) {
-        res.json(savedQuestion);
-      }
-    })
-    .catch((error) => {
-      console.error("Error restoring version:", error);
-      res.status(400).json({ error: "Failed to restore version" });
-    });
-};
 
-exports.listTrash = function (req, res, next) {
-  Question.find({
-    quizId: req.params.quizId,
-    deletedAt: { $ne: null },
-  })
-    .sort("-deletedAt")
-    .then((trashedQuestions) => {
-      res.json(trashedQuestions);
-    })
-    .catch((error) => {
-      console.error("Error fetching trash:", error);
-      res.status(500).json({ error: "Failed to fetch trash" });
-    });
-};
-
-exports.hardDelete = function (req, res, next) {
-  Question.findById(req.params.id)
-    .then((question) => {
-      if (!question) {
-        return res.status(404).json({ error: "Question not found" });
-      }
-      if (!question.deletedAt) {
-        return res
-          .status(400)
-          .json({ error: "Question must be in trash before purging" });
-      }
-      return Promise.all([
-        Question.findByIdAndDelete(req.params.id),
-        QuestionVersion.deleteMany({ questionId: req.params.id }),
-      ]);
-    })
-    .then(() => {
-      res.json({ message: "Question purged successfully" });
-    })
-    .catch((error) => {
-      console.error("Error purging question:", error);
-      res.status(400).json({ error: "Failed to purge question" });
-    });
-};
 
 exports.listQuestions = function (req, res, next) {
   const { search, tags, status, sort = "-createdAt" } = req.query;
   const query = {
     quizId: req.params.quizId,
-    deletedAt: null,
   };
   if (search) {
     query.$text = { $search: search };

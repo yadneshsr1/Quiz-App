@@ -5,6 +5,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const { isIpAllowed, validateAndNormalizeCidr } = require("../utils/ipcheck");
 const os = require('os');
+const { markTicketAsUsed, isTicketUsed } = require("../utils/ticketManager");
 
 function getLocalIPv4Address() {
   const interfaces = os.networkInterfaces();
@@ -373,8 +374,7 @@ exports.getQuiz = async function (req, res, next) {
 
     // Then, get all questions for this quiz from the separate Question model
     const questions = await Question.find({ 
-      quizId: id, 
-      deletedAt: null 
+      quizId: id
     }).sort({ createdAt: 1 });
 
     // Transform questions to match the expected format
@@ -419,8 +419,7 @@ exports.getQuizQuestions = async function (req, res, next) {
 
     // Build dynamic query with filters
     const query = {
-      quizId: id,
-      deletedAt: null
+      quizId: id
     };
 
     // Add search filter
@@ -688,12 +687,19 @@ exports.startQuiz = async function (req, res, next) {
     // Check for single-use ticket reuse (if enabled)
     if (ENABLE_SINGLE_USE_TICKETS && req.launchTicket) {
       const jti = req.launchTicket.jti;
-      if (usedTicketIds.has(jti)) {
+      
+      // Check both in-memory cache and persistent storage
+      const isUsedInMemory = usedTicketIds.has(jti);
+      const isUsedInDB = await isTicketUsed(jti);
+      
+      if (isUsedInMemory || isUsedInDB) {
         logSecurityEvent("TICKET_REUSE_ATTEMPT", {
           userId,
           userIp,
           quizId,
-          jti
+          jti,
+          foundInMemory: isUsedInMemory,
+          foundInDB: isUsedInDB
         });
         return res.status(403).json({ 
           error: "Ticket already used",
@@ -701,9 +707,36 @@ exports.startQuiz = async function (req, res, next) {
         });
       }
       
-      // Mark ticket as used
+      // Mark ticket as used in both systems
       const expiryTime = req.launchTicket.exp * 1000; // Convert to milliseconds
-      usedTicketIds.set(jti, expiryTime);
+      usedTicketIds.set(jti, expiryTime); // In-memory for fast lookup
+      
+      // Store persistently with metadata
+      const ticketStored = await markTicketAsUsed(
+        jti,
+        expiryTime,
+        quizId,
+        userId,
+        {
+          userAgent: req.get('User-Agent'),
+          ipAddress: userIp
+        }
+      );
+      
+      if (!ticketStored) {
+        // This should be rare, but handle the case where DB storage fails due to duplicate
+        logSecurityEvent("TICKET_STORAGE_CONFLICT", {
+          userId,
+          userIp,
+          quizId,
+          jti,
+          message: "Ticket was already stored in database during concurrent request"
+        });
+        return res.status(403).json({ 
+          error: "Ticket already used",
+          message: "This launch ticket has already been used. Please launch the quiz again to get a new ticket."
+        });
+      }
     }
 
     // Find the quiz
@@ -768,8 +801,7 @@ exports.startQuiz = async function (req, res, next) {
 
     // Get questions for this quiz
     const questions = await Question.find({ 
-      quizId: quizId, 
-      deletedAt: null 
+      quizId: quizId
     }).sort({ createdAt: 1 });
 
     // Return minimal payload for quiz taking page
